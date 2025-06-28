@@ -19,95 +19,160 @@ export interface AmazonBook {
 
 // Comprehensive genre-specific content templates
 const bookTitleTemplates = {
-  fiction: [
-    'The {adjective} {noun}', '{adjective} {timeOfDay}', 'The {noun} of {place}',
-    '{character}\'s {journey}', 'Beyond the {noun}', 'The Last {noun}',
-    'Whispers of {place}', 'The {adjective} Garden', 'Shadows in {place}',
-    'The {noun} Chronicles', 'Letters from {place}', 'The {adjective} Heart'
+  'action-&-adventure': [
+    'The {adjective} {noun}', 'Quest for {noun}', 'The {place} Adventure',
+    'Journey to {place}', 'The {adjective} Quest', 'Adventures of {character}',
+    'The {place} Expedition', 'Voyage to {place}', 'The {adjective} Trail'
   ],
-  'non-fiction': [
-    'The Art of {skill}', 'Mastering {concept}', '{concept}: A Complete Guide',
-    'The {adjective} Mind', 'Unlocking {potential}', 'The Science of {concept}',
-    'Building {skill}', 'The {adjective} Leader', 'Principles of {concept}',
-    'The {skill} Revolution', 'Thinking {adjective}', 'The Power of {concept}'
+  'arts-&-music': [
+    'The Art of {concept}', 'Music of {place}', 'The {adjective} Symphony',
+    'Canvas of {concept}', 'The {adjective} Melody', 'Rhythm of {place}',
+    'The {concept} Gallery', 'Songs of {place}', 'The {adjective} Performance'
   ],
-  mystery: [
-    'The {place} Mystery', 'Murder in {place}', 'The {adjective} Detective',
-    'Secrets of {place}', 'The {noun} Conspiracy', 'Death in {place}',
-    'The {adjective} Case', 'Blood on {place}', 'The {place} Murders',
-    'Silent {noun}', 'The {adjective} Witness', 'Shadows of {place}'
-  ],
-  'science-fiction': [
-    'The {planet} Protocol', 'Beyond {place}', 'The {adjective} Galaxy',
-    '{character} Rising', 'The {noun} Wars', 'Quantum {concept}',
-    'The {adjective} Future', 'Stars of {place}', 'The {noun} Paradox',
-    'Digital {concept}', 'The {adjective} Dimension', 'Chronicles of {planet}'
-  ],
-  fantasy: [
-    'The {adjective} Realm', 'Chronicles of {place}', 'The {noun} Prophecy',
-    'Legends of {character}', 'The {adjective} Crown', 'Realm of {noun}',
-    'The {place} Saga', 'Magic of {place}', 'The {adjective} Throne',
-    'Quest for {noun}', 'The {adjective} Sword', 'Tales of {place}'
-  ],
-  romance: [
-    '{adjective} Hearts', 'Love in {place}', 'The {adjective} Promise',
-    '{character}\'s Heart', 'Passion in {place}', 'The {adjective} Kiss',
-    'Romance in {place}', 'The {adjective} Wedding', 'Hearts of {place}',
-    'The {adjective} Bride', 'Love\'s {adjective} {noun}', 'The {place} Romance'
-  ],
-  biography: [
+  'biographies-&-memoirs': [
     'The Life of {character}', '{character}: A Biography', 'The {adjective} Life',
     'Journey of {character}', '{character}\'s Story', 'The {adjective} Years',
-    'Memoirs of {character}', 'The {character} Chronicles', 'Life and Times of {character}',
-    'The {adjective} Legacy', '{character}: An Autobiography', 'The {character} Story'
+    'Memoirs of {character}', 'The {character} Chronicles', 'Life and Times of {character}'
   ],
-  history: [
+  'business-&-investing': [
+    'The {adjective} Leader', 'Business {concept}', 'The Art of {skill}',
+    'Strategic {concept}', 'The {adjective} Company', 'Leadership {concept}',
+    'The {skill} Advantage', 'Building {adjective} Teams', 'The {concept} Revolution'
+  ],
+  'children\'s-books': [
+    'The {adjective} {animal}', '{character} and the {noun}', 'The Magic {noun}',
+    '{character}\'s Adventure', 'The {adjective} Forest', 'Tales of {character}',
+    'The {noun} Friends', '{character} Learns {concept}', 'The {adjective} Day'
+  ],
+  'computers-&-technology': [
+    'The {adjective} Code', 'Digital {concept}', 'The {concept} Revolution',
+    'Programming {concept}', 'The {adjective} Algorithm', 'Tech {concept}',
+    'The {concept} Framework', 'Coding {concept}', 'The {adjective} System'
+  ],
+  'cooking,-food-&-wine': [
+    'The {adjective} Kitchen', 'Flavors of {place}', 'The {concept} Cookbook',
+    'Cooking with {concept}', 'The {adjective} Recipe', 'Taste of {place}',
+    'The {concept} Table', 'Culinary {concept}', 'The {adjective} Feast'
+  ],
+  'crafts-&-hobbies': [
+    'The Art of {skill}', 'Crafting {concept}', 'The {adjective} Project',
+    'DIY {concept}', 'The {skill} Guide', 'Creating {concept}',
+    'The {adjective} Craft', 'Handmade {concept}', 'The {skill} Workshop'
+  ],
+  'education-&-reference': [
+    'The Complete Guide to {concept}', 'Understanding {concept}', 'The {concept} Handbook',
+    'Mastering {skill}', 'The {adjective} Reference', 'Learning {concept}',
+    'The {concept} Encyclopedia', 'Study of {concept}', 'The {adjective} Manual'
+  ],
+  'fiction': [
+    'The {adjective} {noun}', '{adjective} {timeOfDay}', 'The {noun} of {place}',
+    '{character}\'s {journey}', 'Beyond the {noun}', 'The Last {noun}',
+    'Whispers of {place}', 'The {adjective} Garden', 'Shadows in {place}'
+  ],
+  'historical-fiction': [
+    'The {place} Chronicles', 'Tales from {place}', 'The {adjective} Century',
+    'Secrets of {place}', 'The {place} Story', 'Ancient {place}',
+    'The {adjective} Empire', 'Legends of {place}', 'The {place} Legacy'
+  ],
+  'literary-fiction': [
+    'The {adjective} {noun}', 'Memories of {place}', 'The {concept} Garden',
+    'Letters from {place}', 'The {adjective} Heart', 'Echoes of {place}',
+    'The {noun} Keeper', 'Stories of {place}', 'The {adjective} Season'
+  ],
+  'mystery-&-thriller': [
+    'The {place} Mystery', 'Murder in {place}', 'The {adjective} Detective',
+    'Secrets of {place}', 'The {noun} Conspiracy', 'Death in {place}',
+    'The {adjective} Case', 'Blood on {place}', 'The {place} Murders'
+  ],
+  'romance': [
+    '{adjective} Hearts', 'Love in {place}', 'The {adjective} Promise',
+    '{character}\'s Heart', 'Passion in {place}', 'The {adjective} Kiss',
+    'Romance in {place}', 'The {adjective} Wedding', 'Hearts of {place}'
+  ],
+  'science-fiction-&-fantasy': [
+    'The {planet} Protocol', 'Beyond {place}', 'The {adjective} Galaxy',
+    '{character} Rising', 'The {noun} Wars', 'Quantum {concept}',
+    'The {adjective} Future', 'Stars of {place}', 'The {noun} Paradox'
+  ],
+  'health-&-wellness': [
+    'The {adjective} Body', 'Healing {concept}', 'The {concept} Way',
+    'Wellness {concept}', 'The {adjective} Mind', 'Health {concept}',
+    'The {concept} Solution', 'Living {adjective}', 'The {adjective} Life'
+  ],
+  'history': [
     'The {adjective} Era', 'History of {place}', 'The {place} Chronicles',
     'Tales from {place}', 'The {adjective} Century', 'Secrets of {place}',
-    'The {place} Story', 'Ancient {place}', 'The {adjective} Empire',
-    'Legends of {place}', 'The {place} Legacy', 'Chronicles of {adjective} Times'
+    'The {place} Story', 'Ancient {place}', 'The {adjective} Empire'
+  ],
+  'humor': [
+    'The {adjective} {noun}', 'Laughing at {concept}', 'The {concept} Comedy',
+    'Funny {concept}', 'The {adjective} Joke', 'Comedy of {concept}',
+    'The {concept} Humor', 'Jokes about {concept}', 'The {adjective} Laugh'
+  ],
+  'lgbtq+-books': [
+    'The {adjective} {noun}', 'Pride in {place}', 'The {concept} Story',
+    'Love and {concept}', 'The {adjective} Heart', 'Stories of {concept}',
+    'The {concept} Journey', 'Finding {concept}', 'The {adjective} Truth'
+  ],
+  'medical': [
+    'The {adjective} Doctor', 'Medical {concept}', 'The {concept} Cure',
+    'Healing {concept}', 'The {adjective} Patient', 'Medicine {concept}',
+    'The {concept} Treatment', 'Clinical {concept}', 'The {adjective} Diagnosis'
+  ],
+  'outdoor-&-sports': [
+    'The {adjective} Trail', 'Adventures in {place}', 'The {concept} Challenge',
+    'Outdoor {concept}', 'The {adjective} Mountain', 'Sports {concept}',
+    'The {concept} Adventure', 'Wild {place}', 'The {adjective} Journey'
+  ],
+  'parenting-&-relationships': [
+    'The {adjective} Parent', 'Raising {adjective} Children', 'The {concept} Family',
+    'Parenting {concept}', 'The {adjective} Child', 'Family {concept}',
+    'The {concept} Relationship', 'Love and {concept}', 'The {adjective} Home'
+  ],
+  'pets': [
+    'The {adjective} {animal}', 'Life with {animal}', 'The {concept} Pet',
+    'Caring for {animal}', 'The {adjective} Companion', 'Pet {concept}',
+    'The {animal} Guide', 'Stories of {animal}', 'The {adjective} Friend'
+  ],
+  'politics-&-social-sciences': [
+    'The {adjective} State', 'Politics of {concept}', 'The {concept} Society',
+    'Social {concept}', 'The {adjective} Government', 'Democracy {concept}',
+    'The {concept} System', 'Political {concept}', 'The {adjective} Nation'
+  ],
+  'psychology': [
+    'The {adjective} Mind', 'Psychology of {concept}', 'Understanding {concept}',
+    'The {concept} Brain', 'Mental {concept}', 'The {adjective} Psyche',
+    'Cognitive {concept}', 'The Mind\'s {noun}', 'Behavioral {concept}'
+  ],
+  'religion-&-spirituality': [
+    'The {adjective} Spirit', 'Faith in {concept}', 'The {concept} Path',
+    'Spiritual {concept}', 'The {adjective} Soul', 'Sacred {concept}',
+    'The {concept} Journey', 'Divine {concept}', 'The {adjective} Way'
+  ],
+  'science-&-math': [
+    'The {adjective} Universe', 'Science of {concept}', 'The {concept} Theory',
+    'Mathematical {concept}', 'The {adjective} Equation', 'Physics {concept}',
+    'The {concept} Formula', 'Scientific {concept}', 'The {adjective} Discovery'
   ],
   'self-help': [
     'The {adjective} You', 'Transform Your {concept}', 'The Art of {skill}',
     'Mastering {concept}', 'The {adjective} Mind', 'Unlock Your {potential}',
-    'The Power of {concept}', 'Building {skill}', 'The {adjective} Life',
-    'Discover Your {potential}', 'The {skill} Method', 'Creating {adjective} {concept}'
+    'The Power of {concept}', 'Building {skill}', 'The {adjective} Life'
   ],
-  business: [
-    'The {adjective} Leader', 'Business {concept}', 'The Art of {skill}',
-    'Strategic {concept}', 'The {adjective} Company', 'Leadership {concept}',
-    'The {skill} Advantage', 'Building {adjective} Teams', 'The {concept} Revolution',
-    'Innovative {concept}', 'The {adjective} Strategy', 'Mastering {skill}'
+  'sports-&-outdoors': [
+    'The {adjective} Game', 'Sports {concept}', 'The {concept} Champion',
+    'Athletic {concept}', 'The {adjective} Player', 'Competition {concept}',
+    'The {concept} Victory', 'Training {concept}', 'The {adjective} Season'
   ],
-  philosophy: [
-    'The {adjective} Mind', 'Thoughts on {concept}', 'The Nature of {concept}',
-    'Philosophy of {concept}', 'The {adjective} Truth', 'Wisdom of {concept}',
-    'The {concept} Question', 'Understanding {concept}', 'The {adjective} Path',
-    'Reflections on {concept}', 'The {concept} Paradox', 'The {adjective} Way'
+  'travel': [
+    'Journey to {place}', 'Exploring {place}', 'The {adjective} Traveler',
+    'Adventures in {place}', 'The {place} Guide', 'Discovering {place}',
+    'The {concept} Journey', 'Wandering {place}', 'The {adjective} Voyage'
   ],
-  psychology: [
-    'The {adjective} Mind', 'Psychology of {concept}', 'Understanding {concept}',
-    'The {concept} Brain', 'Mental {concept}', 'The {adjective} Psyche',
-    'Cognitive {concept}', 'The Mind\'s {noun}', 'Behavioral {concept}',
-    'The {adjective} Self', 'Psychology Today: {concept}', 'The {concept} Effect'
-  ],
-  poetry: [
-    '{adjective} Verses', 'Songs of {place}', 'The {adjective} Collection',
-    'Poems from {place}', '{adjective} Words', 'The {noun} Poems',
-    'Verses of {concept}', 'The {adjective} Voice', 'Poetry of {place}',
-    '{adjective} Reflections', 'The {place} Anthology', 'Words of {concept}'
-  ],
-  drama: [
-    'The {adjective} Stage', 'Drama in {place}', 'The {place} Play',
-    'Acts of {concept}', 'The {adjective} Performance', 'Scenes from {place}',
-    'The {noun} Drama', 'Theater of {concept}', 'The {adjective} Act',
-    'Plays from {place}', 'The {concept} Stage', 'Drama and {concept}'
-  ],
-  adventure: [
-    'Quest for {noun}', 'Adventure in {place}', 'The {adjective} Journey',
-    'Expedition to {place}', 'The {place} Adventure', 'Journey to {place}',
-    'The {adjective} Quest', 'Adventures of {character}', 'The {place} Expedition',
-    'Voyage to {place}', 'The {adjective} Trail', 'Exploring {place}'
+  'young-adult': [
+    'The {adjective} {noun}', '{character}\'s {journey}', 'The {concept} Academy',
+    'Teen {concept}', 'The {adjective} High School', 'Young {concept}',
+    'The {concept} Club', 'Coming of {concept}', 'The {adjective} Summer'
   ]
 };
 
@@ -121,7 +186,8 @@ const wordLists = {
   skill: ['Leadership', 'Innovation', 'Communication', 'Creativity', 'Focus', 'Resilience', 'Mindfulness', 'Productivity', 'Influence', 'Strategy', 'Negotiation', 'Empathy', 'Collaboration', 'Vision', 'Execution'],
   concept: ['Success', 'Happiness', 'Growth', 'Change', 'Excellence', 'Purpose', 'Balance', 'Wisdom', 'Courage', 'Freedom', 'Innovation', 'Transformation', 'Achievement', 'Fulfillment', 'Breakthrough'],
   potential: ['Potential', 'Creativity', 'Intelligence', 'Intuition', 'Imagination', 'Innovation', 'Inspiration', 'Insight', 'Vision', 'Genius', 'Talent', 'Ability', 'Capacity', 'Power', 'Strength'],
-  planet: ['Mars', 'Europa', 'Titan', 'Proxima', 'Kepler', 'Gliese', 'Trappist', 'Alpha', 'Beta', 'Gamma', 'Centauri', 'Vega', 'Sirius', 'Arcturus', 'Polaris']
+  planet: ['Mars', 'Europa', 'Titan', 'Proxima', 'Kepler', 'Gliese', 'Trappist', 'Alpha', 'Beta', 'Gamma', 'Centauri', 'Vega', 'Sirius', 'Arcturus', 'Polaris'],
+  animal: ['Cat', 'Dog', 'Bird', 'Fish', 'Rabbit', 'Horse', 'Lion', 'Tiger', 'Bear', 'Wolf', 'Fox', 'Deer', 'Elephant', 'Dolphin', 'Whale']
 };
 
 const authorNames = [
@@ -136,185 +202,222 @@ const authorNames = [
 const publishYears = ['2020', '2021', '2022', '2023', '2024'];
 
 const descriptions = {
-  fiction: [
-    'A captivating tale that weaves together love, loss, and redemption in unexpected ways.',
-    'An emotionally powerful story that explores the depths of human connection and resilience.',
-    'A beautifully crafted narrative that takes readers on an unforgettable journey of discovery.',
-    'A compelling exploration of family, identity, and the choices that define us.',
-    'An intricate story of secrets, betrayal, and the power of forgiveness.',
-    'A mesmerizing tale that blends reality with imagination in stunning detail.',
-    'A profound meditation on life, love, and the meaning we create from our experiences.',
-    'An epic story spanning generations, revealing how the past shapes our present.',
-    'A tender yet powerful exploration of hope, healing, and second chances.',
-    'A richly layered narrative that examines the complexity of human relationships.'
+  'action-&-adventure': [
+    'A thrilling expedition that takes readers to the far corners of the earth and beyond.',
+    'An action-packed journey filled with danger, discovery, and personal transformation.',
+    'A gripping adventure that combines physical challenges with emotional and spiritual growth.',
+    'An epic quest that tests the limits of human endurance and the power of determination.',
+    'A heart-pounding adventure that explores uncharted territories and unknown possibilities.'
   ],
-  'non-fiction': [
-    'A groundbreaking exploration of cutting-edge research and practical applications.',
-    'An insightful guide that combines scientific evidence with actionable strategies.',
-    'A comprehensive examination of proven methods for personal and professional growth.',
-    'A thought-provoking analysis that challenges conventional wisdom and offers new perspectives.',
-    'An accessible yet thorough investigation into the principles that drive success.',
-    'A practical handbook filled with evidence-based techniques and real-world examples.',
-    'An illuminating study that reveals the hidden patterns behind extraordinary achievement.',
-    'A transformative guide that bridges the gap between theory and practical application.',
-    'An engaging exploration of the latest discoveries in psychology and neuroscience.',
-    'A compelling synthesis of research, case studies, and actionable insights.'
+  'arts-&-music': [
+    'A beautiful exploration of creativity and artistic expression in all its forms.',
+    'An inspiring journey through the world of music and visual arts.',
+    'A captivating look at how art transforms lives and communities.',
+    'A passionate celebration of creativity and the artistic spirit.',
+    'An intimate portrait of artists and their creative processes.'
   ],
-  mystery: [
-    'A gripping thriller that keeps readers guessing until the final page.',
-    'An intricate puzzle filled with red herrings, shocking twists, and dark secrets.',
-    'A masterfully plotted mystery that explores the darker side of human nature.',
-    'A suspenseful tale of deception, betrayal, and the pursuit of justice.',
-    'An atmospheric thriller that combines psychological depth with edge-of-your-seat tension.',
-    'A complex web of lies and secrets that slowly unravels to reveal a stunning truth.',
-    'A haunting mystery that delves into the shadows of a seemingly perfect community.',
-    'A cleverly constructed puzzle that challenges readers to solve the case alongside the detective.',
-    'A dark and twisting tale that explores the lengths people will go to protect their secrets.',
-    'A compelling investigation that reveals how the past can come back to haunt the present.'
-  ],
-  'science-fiction': [
-    'A visionary exploration of humanity\'s future among the stars.',
-    'A thought-provoking tale that examines the intersection of technology and human nature.',
-    'An epic space opera that spans galaxies and challenges our understanding of reality.',
-    'A compelling vision of the future that feels both fantastical and eerily plausible.',
-    'An innovative story that explores the consequences of scientific advancement.',
-    'A mind-bending journey through time, space, and the possibilities of human evolution.',
-    'A thrilling adventure that combines cutting-edge science with timeless human drama.',
-    'An imaginative exploration of alien worlds and the universal quest for meaning.',
-    'A sophisticated tale that questions what it means to be human in an age of artificial intelligence.',
-    'A sweeping narrative that examines the delicate balance between progress and preservation.'
-  ],
-  fantasy: [
-    'An enchanting tale of magic, adventure, and the eternal struggle between good and evil.',
-    'A richly imagined world where ancient prophecies and modern heroes collide.',
-    'An epic fantasy that weaves together mythology, magic, and unforgettable characters.',
-    'A spellbinding journey through realms where anything is possible and everything is at stake.',
-    'A masterful blend of world-building, character development, and magical storytelling.',
-    'An immersive fantasy that explores themes of power, destiny, and the courage to change fate.',
-    'A captivating adventure that transports readers to a world of wonder and danger.',
-    'An intricate tale of kingdoms, quests, and the magic that binds all living things.',
-    'A powerful story of heroes rising to meet their destiny in a world on the brink of chaos.',
-    'An unforgettable fantasy that celebrates the triumph of hope over darkness.'
-  ],
-  romance: [
-    'A heartwarming love story that celebrates the power of connection and second chances.',
-    'A passionate romance that explores the depths of love, loss, and redemption.',
-    'A tender tale of two hearts finding their way to each other against all odds.',
-    'A captivating love story that weaves together destiny, desire, and devotion.',
-    'A romantic journey that proves love can conquer even the greatest obstacles.',
-    'A beautiful exploration of love in all its forms, from first attraction to lasting commitment.',
-    'A steamy romance that combines passion with emotional depth and character growth.',
-    'A sweet love story that reminds us that the best relationships are built on friendship and trust.',
-    'A compelling romance that examines how love can transform and heal even the most broken hearts.',
-    'An enchanting tale of love that transcends time, distance, and circumstance.'
-  ],
-  biography: [
+  'biographies-&-memoirs': [
     'An inspiring portrait of a life lived with purpose, passion, and unwavering determination.',
     'A comprehensive examination of a remarkable individual who changed the course of history.',
     'An intimate look at the personal struggles and triumphs that shaped an extraordinary life.',
     'A meticulously researched biography that reveals the human story behind the public figure.',
-    'An engaging narrative that brings to life the challenges and achievements of a true pioneer.',
-    'A thoughtful exploration of how one person\'s vision and courage can impact the world.',
-    'A compelling story of resilience, innovation, and the pursuit of excellence.',
-    'An authoritative account that separates myth from reality in the life of a legendary figure.',
-    'A nuanced portrait that examines both the public achievements and private struggles of greatness.',
-    'An illuminating biography that offers fresh insights into a life that continues to inspire.'
+    'An engaging narrative that brings to life the challenges and achievements of a true pioneer.'
   ],
-  history: [
+  'business-&-investing': [
+    'A strategic guide to building and leading successful organizations in the modern economy.',
+    'An innovative approach to management that combines proven principles with cutting-edge insights.',
+    'A comprehensive examination of the leadership skills needed to thrive in today\'s business environment.',
+    'A practical handbook for entrepreneurs and executives seeking sustainable competitive advantage.',
+    'An insightful analysis of market trends and business strategies that drive long-term success.'
+  ],
+  'children\'s-books': [
+    'A delightful story that sparks imagination and teaches valuable life lessons.',
+    'A charming tale filled with adventure, friendship, and important discoveries.',
+    'An engaging story that helps children understand the world around them.',
+    'A fun and educational adventure that encourages curiosity and learning.',
+    'A heartwarming story about friendship, courage, and growing up.'
+  ],
+  'computers-&-technology': [
+    'A comprehensive guide to understanding and leveraging cutting-edge technology.',
+    'An accessible exploration of how technology is reshaping our world.',
+    'A practical handbook for navigating the digital landscape.',
+    'An insightful analysis of emerging technologies and their implications.',
+    'A forward-thinking guide to the future of computing and innovation.'
+  ],
+  'cooking,-food-&-wine': [
+    'A culinary journey that celebrates the art and science of cooking.',
+    'A delicious exploration of flavors, techniques, and food traditions.',
+    'A comprehensive guide to creating memorable meals and experiences.',
+    'An inspiring cookbook that brings restaurant-quality dishes to your home.',
+    'A passionate celebration of food culture and culinary creativity.'
+  ],
+  'crafts-&-hobbies': [
+    'A comprehensive guide to mastering traditional and modern crafting techniques.',
+    'An inspiring collection of projects that celebrate creativity and handmade artistry.',
+    'A practical handbook for developing new skills and exploring creative hobbies.',
+    'A detailed guide to creating beautiful, functional items with your own hands.',
+    'An encouraging resource for crafters of all skill levels and interests.'
+  ],
+  'education-&-reference': [
+    'A comprehensive resource that provides essential knowledge and practical guidance.',
+    'An authoritative reference that serves as an invaluable learning tool.',
+    'A thorough examination of key concepts and their real-world applications.',
+    'A well-organized guide that makes complex subjects accessible and understandable.',
+    'An essential reference that supports both learning and professional development.'
+  ],
+  'fiction': [
+    'A captivating tale that weaves together love, loss, and redemption in unexpected ways.',
+    'An emotionally powerful story that explores the depths of human connection and resilience.',
+    'A beautifully crafted narrative that takes readers on an unforgettable journey of discovery.',
+    'A compelling exploration of family, identity, and the choices that define us.',
+    'An intricate story of secrets, betrayal, and the power of forgiveness.'
+  ],
+  'historical-fiction': [
+    'A vivid recreation of a bygone era that brings history to life through compelling characters.',
+    'An immersive historical narrative that illuminates the human experience across time.',
+    'A meticulously researched story that captures the essence of a pivotal historical moment.',
+    'A sweeping tale that weaves personal stories into the fabric of historical events.',
+    'A powerful exploration of how historical forces shape individual lives and destinies.'
+  ],
+  'literary-fiction': [
+    'A profound meditation on the human condition told through exquisite prose.',
+    'An elegant exploration of memory, identity, and the passage of time.',
+    'A sophisticated narrative that examines the complexities of modern life.',
+    'A beautifully written story that captures the subtleties of human emotion.',
+    'A thoughtful examination of relationships, loss, and the search for meaning.'
+  ],
+  'mystery-&-thriller': [
+    'A gripping thriller that keeps readers guessing until the final page.',
+    'An intricate puzzle filled with red herrings, shocking twists, and dark secrets.',
+    'A masterfully plotted mystery that explores the darker side of human nature.',
+    'A suspenseful tale of deception, betrayal, and the pursuit of justice.',
+    'An atmospheric thriller that combines psychological depth with edge-of-your-seat tension.'
+  ],
+  'romance': [
+    'A heartwarming love story that celebrates the power of connection and second chances.',
+    'A passionate romance that explores the depths of love, loss, and redemption.',
+    'A tender tale of two hearts finding their way to each other against all odds.',
+    'A captivating love story that weaves together destiny, desire, and devotion.',
+    'A romantic journey that proves love can conquer even the greatest obstacles.'
+  ],
+  'science-fiction-&-fantasy': [
+    'A visionary exploration of humanity\'s future among the stars.',
+    'An enchanting tale of magic, adventure, and the eternal struggle between good and evil.',
+    'A thought-provoking story that examines the intersection of technology and human nature.',
+    'An epic space opera that spans galaxies and challenges our understanding of reality.',
+    'A richly imagined world where ancient prophecies and modern heroes collide.'
+  ],
+  'health-&-wellness': [
+    'A comprehensive guide to achieving optimal health and well-being.',
+    'An evidence-based approach to improving physical and mental health.',
+    'A practical handbook for creating sustainable healthy lifestyle changes.',
+    'An inspiring guide to holistic wellness and personal transformation.',
+    'A thoughtful exploration of the mind-body connection and healing.'
+  ],
+  'history': [
     'A fascinating exploration of pivotal moments that shaped our modern world.',
     'A comprehensive examination of historical events through the lens of contemporary scholarship.',
     'An engaging narrative that brings the past to life with vivid detail and compelling storytelling.',
     'A thought-provoking analysis of how historical forces continue to influence our present.',
-    'A meticulously researched account that challenges conventional understanding of the past.',
-    'An accessible yet authoritative exploration of complex historical developments.',
-    'A gripping tale of human drama set against the backdrop of world-changing events.',
-    'An illuminating study that reveals the hidden connections between past and present.',
-    'A balanced examination that presents multiple perspectives on controversial historical topics.',
-    'A compelling narrative that demonstrates how individual actions can alter the course of history.'
+    'A meticulously researched account that challenges conventional understanding of the past.'
+  ],
+  'humor': [
+    'A hilarious collection of observations about modern life and human nature.',
+    'A witty and entertaining exploration of the absurdities of everyday existence.',
+    'A laugh-out-loud funny book that finds humor in the most unexpected places.',
+    'A clever and satirical look at contemporary culture and society.',
+    'A delightfully funny story that combines humor with heart and wisdom.'
+  ],
+  'lgbtq+-books': [
+    'A powerful story of identity, acceptance, and the courage to live authentically.',
+    'An inspiring tale of love, family, and finding your place in the world.',
+    'A moving exploration of LGBTQ+ experiences and the journey toward self-acceptance.',
+    'A heartfelt story that celebrates diversity and the strength of community.',
+    'An important narrative that gives voice to underrepresented experiences and perspectives.'
+  ],
+  'medical': [
+    'A comprehensive guide to understanding medical conditions and treatment options.',
+    'An accessible exploration of cutting-edge medical research and breakthroughs.',
+    'A practical handbook for navigating the healthcare system and making informed decisions.',
+    'An insightful examination of the art and science of medicine.',
+    'A thorough resource for understanding health, disease, and healing.'
+  ],
+  'outdoor-&-sports': [
+    'An inspiring guide to outdoor adventures and athletic pursuits.',
+    'A comprehensive handbook for exploring nature and staying active.',
+    'An exciting exploration of extreme sports and outdoor challenges.',
+    'A practical guide to fitness, training, and athletic performance.',
+    'An adventure-filled journey through the world of outdoor recreation.'
+  ],
+  'parenting-&-relationships': [
+    'A thoughtful guide to building strong, healthy family relationships.',
+    'A practical handbook for navigating the challenges and joys of parenting.',
+    'An insightful exploration of communication and connection in relationships.',
+    'A comprehensive resource for creating a loving, supportive family environment.',
+    'A wise and compassionate guide to raising confident, resilient children.'
+  ],
+  'pets': [
+    'A comprehensive guide to caring for and understanding your beloved pet.',
+    'A heartwarming collection of stories about the special bond between humans and animals.',
+    'A practical handbook for pet owners seeking to provide the best care possible.',
+    'An entertaining and informative look at pet behavior and training.',
+    'A loving tribute to the joy and companionship that pets bring to our lives.'
+  ],
+  'politics-&-social-sciences': [
+    'A thought-provoking analysis of contemporary political and social issues.',
+    'A comprehensive examination of how societies function and evolve.',
+    'An insightful exploration of power, governance, and social change.',
+    'A critical look at the forces shaping our political and social landscape.',
+    'A scholarly yet accessible study of human behavior in social and political contexts.'
+  ],
+  'psychology': [
+    'A groundbreaking exploration of the human mind and the factors that shape behavior.',
+    'An accessible guide to understanding cognitive biases and improving decision-making.',
+    'A comprehensive examination of the latest research in neuroscience and psychology.',
+    'An insightful analysis of how emotions, thoughts, and behaviors interact to create our experience.',
+    'A practical application of psychological principles to enhance well-being and performance.'
+  ],
+  'religion-&-spirituality': [
+    'A profound exploration of faith, meaning, and the spiritual dimension of human experience.',
+    'An inspiring guide to spiritual growth and personal transformation.',
+    'A thoughtful examination of religious traditions and their contemporary relevance.',
+    'A compassionate exploration of the search for meaning and purpose in life.',
+    'A wise and accessible guide to spiritual practices and beliefs.'
+  ],
+  'science-&-math': [
+    'A fascinating exploration of the natural world and the laws that govern it.',
+    'An accessible introduction to complex scientific concepts and mathematical principles.',
+    'A comprehensive examination of cutting-edge research and scientific discoveries.',
+    'An engaging look at how science and mathematics shape our understanding of reality.',
+    'A thought-provoking exploration of the beauty and elegance of scientific knowledge.'
   ],
   'self-help': [
     'A practical guide that provides actionable strategies for personal transformation and growth.',
     'An empowering book that helps readers unlock their potential and achieve their goals.',
     'A comprehensive approach to building resilience, confidence, and lasting success.',
     'An insightful exploration of the mindset and habits that lead to extraordinary achievement.',
-    'A transformative guide that combines ancient wisdom with modern psychological research.',
-    'A step-by-step program for creating positive change in every area of your life.',
-    'An inspiring book that shows how to overcome obstacles and turn challenges into opportunities.',
-    'A practical toolkit for developing emotional intelligence and building stronger relationships.',
-    'A powerful guide to finding purpose, meaning, and fulfillment in both work and life.',
-    'An accessible approach to mastering the skills and mindset needed for lasting happiness.'
+    'A transformative guide that combines ancient wisdom with modern psychological research.'
   ],
-  business: [
-    'A strategic guide to building and leading successful organizations in the modern economy.',
-    'An innovative approach to management that combines proven principles with cutting-edge insights.',
-    'A comprehensive examination of the leadership skills needed to thrive in today\'s business environment.',
-    'A practical handbook for entrepreneurs and executives seeking sustainable competitive advantage.',
-    'An insightful analysis of market trends and business strategies that drive long-term success.',
-    'A transformative approach to organizational culture and employee engagement.',
-    'A data-driven exploration of the factors that separate high-performing companies from the rest.',
-    'A forward-thinking guide to navigating disruption and driving innovation in any industry.',
-    'A practical framework for building resilient businesses that can adapt to changing markets.',
-    'An authoritative resource for leaders seeking to create value for all stakeholders.'
+  'sports-&-outdoors': [
+    'An inspiring guide to athletic excellence and outdoor adventure.',
+    'A comprehensive handbook for sports enthusiasts and outdoor adventurers.',
+    'An exciting exploration of competitive sports and recreational activities.',
+    'A practical guide to training, performance, and athletic achievement.',
+    'An adventure-filled journey through the world of sports and outdoor recreation.'
   ],
-  philosophy: [
-    'A profound exploration of fundamental questions about existence, meaning, and human nature.',
-    'A thoughtful examination of ethical principles and their application to modern life.',
-    'An accessible introduction to complex philosophical concepts and their practical implications.',
-    'A rigorous analysis of consciousness, reality, and the nature of knowledge.',
-    'A compelling argument for new ways of thinking about age-old philosophical problems.',
-    'An interdisciplinary approach that bridges philosophy with science, psychology, and culture.',
-    'A contemplative journey through the great questions that have puzzled humanity for millennia.',
-    'A practical philosophy that offers guidance for living a more examined and meaningful life.',
-    'A scholarly yet engaging exploration of how philosophical thinking can inform everyday decisions.',
-    'A transformative work that challenges readers to question their assumptions about reality and truth.'
+  'travel': [
+    'An inspiring guide to exploring the world and discovering new cultures.',
+    'A comprehensive handbook for travelers seeking authentic experiences.',
+    'An exciting journey through some of the world\'s most fascinating destinations.',
+    'A practical guide to travel planning and cultural immersion.',
+    'An adventure-filled exploration of the transformative power of travel.'
   ],
-  psychology: [
-    'A groundbreaking exploration of the human mind and the factors that shape behavior.',
-    'An accessible guide to understanding cognitive biases and improving decision-making.',
-    'A comprehensive examination of the latest research in neuroscience and psychology.',
-    'An insightful analysis of how emotions, thoughts, and behaviors interact to create our experience.',
-    'A practical application of psychological principles to enhance well-being and performance.',
-    'A fascinating look at the unconscious processes that influence our daily lives.',
-    'An evidence-based approach to understanding and improving mental health and resilience.',
-    'A compelling exploration of how social and cultural factors shape psychological development.',
-    'A thought-provoking examination of the relationship between mind, brain, and behavior.',
-    'An innovative synthesis of research findings with real-world applications for personal growth.'
-  ],
-  poetry: [
-    'A beautiful collection of verses that captures the essence of human emotion and experience.',
-    'An evocative exploration of love, loss, and the profound moments that define our lives.',
-    'A lyrical journey through landscapes both external and internal, real and imagined.',
-    'A powerful collection that gives voice to universal themes through deeply personal expression.',
-    'An intimate anthology that celebrates the beauty and complexity of the human condition.',
-    'A moving collection of poems that explores the intersection of memory, identity, and place.',
-    'A contemplative work that finds extraordinary meaning in ordinary moments.',
-    'A passionate exploration of nature, spirituality, and our connection to the world around us.',
-    'A diverse collection that showcases the range and power of contemporary poetic expression.',
-    'An inspiring anthology that demonstrates poetry\'s ability to heal, challenge, and transform.'
-  ],
-  drama: [
-    'A powerful theatrical work that explores the depths of human conflict and resolution.',
-    'A compelling drama that examines contemporary social issues through compelling characters.',
-    'A thought-provoking play that challenges audiences to confront difficult truths about society.',
-    'An emotionally charged work that brings complex relationships to vivid life on stage.',
-    'A masterful drama that weaves together personal stories with universal themes.',
-    'An innovative theatrical piece that pushes the boundaries of traditional dramatic form.',
-    'A gripping play that explores the consequences of choice and the nature of responsibility.',
-    'A nuanced drama that examines how the past continues to influence the present.',
-    'A powerful work that gives voice to marginalized perspectives and untold stories.',
-    'An engaging play that combines entertainment with meaningful social commentary.'
-  ],
-  adventure: [
-    'A thrilling expedition that takes readers to the far corners of the earth and beyond.',
-    'An action-packed journey filled with danger, discovery, and personal transformation.',
-    'A gripping adventure that combines physical challenges with emotional and spiritual growth.',
-    'An epic quest that tests the limits of human endurance and the power of determination.',
-    'A heart-pounding adventure that explores uncharted territories and unknown possibilities.',
-    'A compelling tale of survival against overwhelming odds in hostile environments.',
-    'An exhilarating journey that celebrates the human spirit of exploration and discovery.',
-    'A riveting adventure that combines historical detail with edge-of-your-seat excitement.',
-    'A transformative expedition that reveals how extreme challenges can lead to profound insights.',
-    'An unforgettable adventure that demonstrates the courage required to pursue one\'s dreams.'
+  'young-adult': [
+    'A compelling coming-of-age story that explores identity, friendship, and growing up.',
+    'An engaging tale of teenage life, challenges, and self-discovery.',
+    'A powerful story about finding your voice and standing up for what you believe in.',
+    'An inspiring narrative about overcoming obstacles and pursuing your dreams.',
+    'A heartfelt exploration of the complexities of adolescence and young adulthood.'
   ]
 };
 
@@ -398,7 +501,7 @@ function generateBook(genre: string): AmazonBook {
     cover: generateCoverUrl(title),
     isbn,
     publishDate,
-    genre: genre.charAt(0).toUpperCase() + genre.slice(1).replace('-', ' '),
+    genre: genre.charAt(0).toUpperCase() + genre.slice(1).replace(/-/g, ' '),
     audience: 'Adult',
     description,
     amazonUrl: `https://www.amazon.com/dp/${asin}`,

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ExternalLink, ShoppingCart, Heart, Star, BookOpen, Check, RefreshCw, Settings, Target, Download, Upload } from 'lucide-react';
+import { ExternalLink, ShoppingCart, Heart, Star, BookOpen, Check, RefreshCw, Settings, Target, Download, Upload, TrendingUp } from 'lucide-react';
 import { AmazonBooksService, AmazonBook } from '../services/amazonBooks';
 
 interface UserPreferences {
@@ -19,6 +19,19 @@ const Recommendations: React.FC = () => {
   const [refreshingBook, setRefreshingBook] = useState<string | null>(null);
   const [userPreferences, setUserPreferences] = useState<UserPreferences | null>(null);
   const [availableGenres, setAvailableGenres] = useState<string[]>([]);
+  const [isTrendingMode, setIsTrendingMode] = useState(false);
+
+  // Trending genres when no survey is completed
+  const trendingGenres = [
+    'Fiction',
+    'Mystery & Thriller', 
+    'Romance',
+    'Science Fiction & Fantasy',
+    'Self-Help',
+    'Business & Investing',
+    'Health & Wellness',
+    'Biographies & Memoirs'
+  ];
 
   useEffect(() => {
     loadUserPreferences();
@@ -37,34 +50,15 @@ const Recommendations: React.FC = () => {
     if (preferences) {
       const parsedPreferences: UserPreferences = JSON.parse(preferences);
       setUserPreferences(parsedPreferences);
+      setIsTrendingMode(false);
       
-      // Convert survey genres to our system genres
-      const genreMapping: Record<string, string> = {
-        'Fiction': 'fiction',
-        'Non-Fiction': 'non-fiction',
-        'Mystery': 'mystery',
-        'Science Fiction': 'science-fiction',
-        'Fantasy': 'fantasy',
-        'Romance': 'romance',
-        'Biography': 'biography',
-        'History': 'history',
-        'Self-Help': 'self-help',
-        'Business': 'business',
-        'Philosophy': 'philosophy',
-        'Psychology': 'psychology',
-        'Poetry': 'poetry',
-        'Drama': 'drama',
-        'Adventure': 'adventure'
-      };
-
-      const mappedGenres = parsedPreferences.genres
-        .map(genre => genreMapping[genre] || genre.toLowerCase().replace(/\s+/g, '-'))
-        .filter(Boolean);
-
-      setAvailableGenres(['all', ...mappedGenres]);
+      // Use user's selected genres directly
+      setAvailableGenres(['all', ...parsedPreferences.genres]);
     } else {
-      // Default genres when no survey completed
-      setAvailableGenres(['all', 'fiction', 'non-fiction', 'mystery', 'science-fiction']);
+      // No survey completed - use trending genres
+      setUserPreferences(null);
+      setIsTrendingMode(true);
+      setAvailableGenres(['all', ...trendingGenres]);
     }
   };
 
@@ -75,40 +69,33 @@ const Recommendations: React.FC = () => {
       
       if (userPreferences && selectedGenre === 'all') {
         // Load books from user's preferred genres
-        const genreMapping: Record<string, string> = {
-          'Fiction': 'fiction',
-          'Non-Fiction': 'non-fiction',
-          'Mystery': 'mystery',
-          'Science Fiction': 'science-fiction',
-          'Fantasy': 'fantasy',
-          'Romance': 'romance',
-          'Biography': 'biography',
-          'History': 'history',
-          'Self-Help': 'self-help',
-          'Business': 'business',
-          'Philosophy': 'philosophy',
-          'Psychology': 'psychology',
-          'Poetry': 'poetry',
-          'Drama': 'drama',
-          'Adventure': 'adventure'
-        };
-
-        const preferredGenres = userPreferences.genres
-          .map(genre => genreMapping[genre] || genre.toLowerCase().replace(/\s+/g, '-'))
-          .filter(Boolean);
-
+        const preferredGenres = userPreferences.genres;
+        
         // Get books from each preferred genre
         const allBooks: AmazonBook[] = [];
         const booksPerGenre = Math.ceil(8 / preferredGenres.length);
         
         for (const genre of preferredGenres) {
-          const genreBooks = await AmazonBooksService.getBooksByGenre(genre, booksPerGenre);
+          const genreBooks = await AmazonBooksService.getBooksByGenre(genre.toLowerCase().replace(/\s+/g, '-'), booksPerGenre);
+          allBooks.push(...genreBooks);
+        }
+        
+        booksData = allBooks.slice(0, 8);
+      } else if (!userPreferences && selectedGenre === 'all') {
+        // No survey - load trending books
+        const allBooks: AmazonBook[] = [];
+        const booksPerGenre = Math.ceil(8 / trendingGenres.length);
+        
+        for (const genre of trendingGenres) {
+          const genreBooks = await AmazonBooksService.getBooksByGenre(genre.toLowerCase().replace(/\s+/g, '-'), booksPerGenre);
           allBooks.push(...genreBooks);
         }
         
         booksData = allBooks.slice(0, 8);
       } else {
-        booksData = await AmazonBooksService.getBooksByGenre(selectedGenre, 8);
+        // Load books for specific genre
+        const genreKey = selectedGenre.toLowerCase().replace(/\s+/g, '-');
+        booksData = await AmazonBooksService.getBooksByGenre(genreKey, 8);
       }
       
       setBooks(booksData);
@@ -221,25 +208,8 @@ const Recommendations: React.FC = () => {
   };
 
   const getGenreDisplayName = (genre: string) => {
-    const displayNames: Record<string, string> = {
-      'all': 'All Genres',
-      'fiction': 'Fiction',
-      'non-fiction': 'Non-Fiction',
-      'mystery': 'Mystery',
-      'science-fiction': 'Science Fiction',
-      'fantasy': 'Fantasy',
-      'romance': 'Romance',
-      'biography': 'Biography',
-      'history': 'History',
-      'self-help': 'Self-Help',
-      'business': 'Business',
-      'philosophy': 'Philosophy',
-      'psychology': 'Psychology',
-      'poetry': 'Poetry',
-      'drama': 'Drama',
-      'adventure': 'Adventure'
-    };
-    return displayNames[genre] || genre.charAt(0).toUpperCase() + genre.slice(1).replace('-', ' ');
+    if (genre === 'all') return 'All Genres';
+    return genre;
   };
 
   if (loading) {
@@ -248,7 +218,9 @@ const Recommendations: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
-            <p className="text-gray-600 dark:text-gray-400">Finding perfect books for you...</p>
+            <p className="text-gray-600 dark:text-gray-400">
+              {isTrendingMode ? 'Finding trending books for you...' : 'Finding perfect books for you...'}
+            </p>
           </div>
         </div>
       </div>
@@ -262,13 +234,17 @@ const Recommendations: React.FC = () => {
         <div className="mb-8">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-                {userPreferences ? 'Personalized Recommendations' : 'Book Recommendations'}
-              </h1>
+              <div className="flex items-center space-x-2 mb-2">
+                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+                  {isTrendingMode ? 'Trending Genres' : 'Personalized Recommendations'}
+                </h1>
+                {isTrendingMode && <TrendingUp className="w-6 h-6 text-orange-500" />}
+                {userPreferences && <Target className="w-6 h-6 text-green-500" />}
+              </div>
               <p className="text-gray-600 dark:text-gray-400">
-                {userPreferences 
-                  ? 'Books curated based on your preferences and reading goals'
-                  : 'Discover great books across various genres'
+                {isTrendingMode 
+                  ? 'Complete Survey to Tailor Your Recommendations'
+                  : 'Books curated based on your preferences and reading goals'
                 }
               </p>
             </div>
@@ -297,27 +273,27 @@ const Recommendations: React.FC = () => {
           </div>
         </div>
 
-        {/* Survey Prompt for non-survey users */}
-        {!userPreferences && (
-          <div className="mb-8 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 border border-indigo-200 dark:border-indigo-800 rounded-lg p-6">
+        {/* Survey Prompt for trending mode */}
+        {isTrendingMode && (
+          <div className="mb-8 bg-gradient-to-r from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-6">
             <div className="flex items-start space-x-4">
               <div className="flex-shrink-0">
-                <Target className="w-8 h-8 text-indigo-600 dark:text-indigo-400" />
+                <TrendingUp className="w-8 h-8 text-orange-600 dark:text-orange-400" />
               </div>
               <div className="flex-1">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                  Complete Survey for Detailed Recommendations
+                  Currently Showing Trending Genres
                 </h3>
                 <p className="text-gray-600 dark:text-gray-400 mb-4">
-                  Take our quick survey to receive book recommendations tailored specifically to your reading preferences, goals, and interests. Currently showing random selections.
+                  These are popular books across trending genres. Take our quick survey to receive book recommendations tailored specifically to your reading preferences, goals, and interests.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-3">
                   <Link
                     to="/survey"
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg font-medium transition-colors inline-flex items-center justify-center space-x-2"
+                    className="bg-orange-600 hover:bg-orange-700 text-white px-6 py-2 rounded-lg font-medium transition-colors inline-flex items-center justify-center space-x-2"
                   >
                     <Settings className="w-4 h-4" />
-                    <span>Complete Survey (2 minutes)</span>
+                    <span>Take Survey (2 minutes)</span>
                   </Link>
                 </div>
               </div>
@@ -325,7 +301,7 @@ const Recommendations: React.FC = () => {
           </div>
         )}
 
-        {/* Personalized Genre Filter */}
+        {/* Personalized Genre Filter for survey users */}
         {userPreferences && (
           <div className="mb-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
@@ -349,9 +325,15 @@ const Recommendations: React.FC = () => {
           </div>
         )}
 
-        {/* Default Genre Filter for non-survey users */}
-        {!userPreferences && (
+        {/* Trending Genre Filter for non-survey users */}
+        {isTrendingMode && (
           <div className="mb-8">
+            <div className="flex items-center space-x-3 mb-4">
+              <TrendingUp className="w-5 h-5 text-orange-500" />
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Trending Genres
+              </h3>
+            </div>
             <div className="flex flex-wrap gap-2">
               {availableGenres.map((genre) => (
                 <button
@@ -359,7 +341,7 @@ const Recommendations: React.FC = () => {
                   onClick={() => setSelectedGenre(genre)}
                   className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
                     selectedGenre === genre
-                      ? 'bg-indigo-600 text-white'
+                      ? 'bg-orange-600 text-white'
                       : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
                   }`}
                 >
@@ -394,6 +376,12 @@ const Recommendations: React.FC = () => {
                     <div className="flex items-center space-x-1 bg-green-500 text-white px-2 py-1 rounded-full text-xs font-medium">
                       <Target className="w-3 h-3" />
                       <span>For You</span>
+                    </div>
+                  )}
+                  {isTrendingMode && (
+                    <div className="flex items-center space-x-1 bg-orange-500 text-white px-2 py-1 rounded-full text-xs font-medium">
+                      <TrendingUp className="w-3 h-3" />
+                      <span>Trending</span>
                     </div>
                   )}
                   {book.rating && (
