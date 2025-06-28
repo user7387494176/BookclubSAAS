@@ -9,6 +9,8 @@ interface ThemeContextType {
   setCustomBackground: (url: string) => void;
 }
 
+const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
+
 export const themes = {
   serenityBlue: {
     name: 'Serenity Blue',
