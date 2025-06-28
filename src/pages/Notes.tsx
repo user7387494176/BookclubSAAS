@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Search, Tag, Edit3, Trash2, BookOpen, Calendar, Filter, Book } from 'lucide-react';
+import { Plus, Search, Tag, Edit3, Trash2, BookOpen, Calendar, Filter, Book, Target, Lightbulb, Globe, Trophy, Heart } from 'lucide-react';
 import { Note, Book as BookType } from '../types';
 
 const Notes: React.FC = () => {
@@ -16,6 +16,85 @@ const Notes: React.FC = () => {
     tags: [] as string[],
     bookId: ''
   });
+
+  // Get user reading goals from localStorage
+  const getUserGoals = () => {
+    try {
+      const preferences = localStorage.getItem('focusreads-preferences');
+      if (preferences) {
+        const parsed = JSON.parse(preferences);
+        return parsed.readingGoals || [];
+      }
+    } catch (error) {
+      console.error('Error parsing preferences:', error);
+    }
+    return [];
+  };
+
+  const userGoals = getUserGoals();
+
+  // Reading goal categories with icons
+  const readingGoalCategories = {
+    'Personal Growth & Development': {
+      icon: <Target className="w-4 h-4" />,
+      color: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300',
+      goals: [
+        'Learn New Skills or Knowledge',
+        'Improve Mental Health',
+        'Develop Empathy and Understanding',
+        'Establish a Reading Habit'
+      ]
+    },
+    'Entertainment & Enjoyment': {
+      icon: <Heart className="w-4 h-4" />,
+      color: 'bg-pink-100 dark:bg-pink-900/30 text-pink-700 dark:text-pink-300',
+      goals: [
+        'Escape into a Different World',
+        'Discover New Authors or Genres',
+        'Set a Reading Target',
+        'Join a Book Club or Discussion Group'
+      ]
+    },
+    'Intellectual Curiosity': {
+      icon: <Lightbulb className="w-4 h-4" />,
+      color: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300',
+      goals: [
+        'Explore New Topics or Subjects',
+        'Stay Informed on Current Events',
+        'Enhance Critical Thinking',
+        'Read Classic Literature'
+      ]
+    },
+    'Social & Community': {
+      icon: <Globe className="w-4 h-4" />,
+      color: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300',
+      goals: [
+        'Connect with Others Through Reading',
+        'Support Literacy and Education',
+        'Read with a Child or Young Adult',
+        'Participate in Reading Challenges'
+      ]
+    },
+    'Personal Achievement': {
+      icon: <Trophy className="w-4 h-4" />,
+      color: 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300',
+      goals: [
+        'Set Page or Word Goals',
+        'Finish a Long or Challenging Book',
+        'Read Outside Your Comfort Zone',
+        'Track Reading Progress'
+      ]
+    }
+  };
+
+  const getGoalCategory = (goal: string) => {
+    for (const [categoryName, category] of Object.entries(readingGoalCategories)) {
+      if (category.goals.includes(goal)) {
+        return { name: categoryName, ...category };
+      }
+    }
+    return null;
+  };
 
   useEffect(() => {
     const savedNotes = JSON.parse(localStorage.getItem('focusreads-notes') || '[]');
@@ -139,6 +218,41 @@ const Notes: React.FC = () => {
             <span>Add Note</span>
           </button>
         </div>
+
+        {/* Reading Goals Section */}
+        {userGoals.length > 0 && (
+          <div className="mb-8 themed-card rounded-lg shadow-lg p-6">
+            <div className="flex items-center space-x-2 mb-4">
+              <Target className="w-5 h-5 theme-primary-text" />
+              <h2 className="text-lg font-semibold theme-text">Your Reading Goals</h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {userGoals.map((goal, index) => {
+                const category = getGoalCategory(goal);
+                return (
+                  <div
+                    key={index}
+                    className={`p-3 rounded-lg border ${category ? category.color : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'}`}
+                  >
+                    <div className="flex items-center space-x-2">
+                      {category?.icon}
+                      <span className="text-sm font-medium">{goal}</span>
+                    </div>
+                    {category && (
+                      <div className="text-xs opacity-75 mt-1">{category.name}</div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+              <p className="text-sm text-blue-800 dark:text-blue-200">
+                <strong>Tip:</strong> Use your notes to track progress toward these goals. 
+                Tag notes with goal-related keywords to easily find insights later.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* No Books Warning */}
         {books.length === 0 && (
@@ -359,6 +473,27 @@ const Notes: React.FC = () => {
                     }}
                     className="w-full px-3 py-2 themed-input rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                   />
+                  
+                  {/* Suggested tags based on reading goals */}
+                  {userGoals.length > 0 && (
+                    <div className="mt-3">
+                      <p className="text-xs theme-text-secondary mb-2">Suggested tags based on your reading goals:</p>
+                      <div className="flex flex-wrap gap-1">
+                        {userGoals.slice(0, 5).map(goal => {
+                          const shortTag = goal.split(' ').slice(0, 2).join(' ');
+                          return (
+                            <button
+                              key={goal}
+                              onClick={() => addTag(shortTag)}
+                              className="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-full transition-colors"
+                            >
+                              {shortTag}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Actions */}

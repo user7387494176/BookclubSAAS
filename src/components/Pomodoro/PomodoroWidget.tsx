@@ -1,5 +1,5 @@
 import React from 'react';
-import { Play, Pause, RotateCcw, Clock, Coffee, Minimize2, Maximize2, SkipForward } from 'lucide-react';
+import { Play, Pause, RotateCcw, Clock, Coffee, Minimize2, Maximize2, SkipForward, Target } from 'lucide-react';
 import { usePomodoro } from '../../contexts/PomodoroContext';
 
 const PomodoroWidget: React.FC = () => {
@@ -16,6 +16,22 @@ const PomodoroWidget: React.FC = () => {
     skipBreak,
     toggleMinimized
   } = usePomodoro();
+
+  // Get user reading goals from localStorage
+  const getUserGoals = () => {
+    try {
+      const preferences = localStorage.getItem('focusreads-preferences');
+      if (preferences) {
+        const parsed = JSON.parse(preferences);
+        return parsed.readingGoals || [];
+      }
+    } catch (error) {
+      console.error('Error parsing preferences:', error);
+    }
+    return [];
+  };
+
+  const userGoals = getUserGoals();
 
   const formatTime = (seconds: number) => {
     const minutes = Math.floor(seconds / 60);
@@ -50,6 +66,16 @@ const PomodoroWidget: React.FC = () => {
                      currentType === 'short-break' ? 5 * 60 : 15 * 60;
     return ((totalTime - timeLeft) / totalTime) * 100;
   };
+
+  const getMotivationalGoal = () => {
+    if (userGoals.length === 0) return null;
+    
+    // Rotate through goals based on session number
+    const goalIndex = (session - 1) % userGoals.length;
+    return userGoals[goalIndex];
+  };
+
+  const motivationalGoal = getMotivationalGoal();
 
   if (isMinimized) {
     return (
@@ -86,6 +112,18 @@ const PomodoroWidget: React.FC = () => {
             </button>
           </div>
         </div>
+
+        {/* Reading Goal Motivation */}
+        {motivationalGoal && currentType === 'focus' && (
+          <div className="mb-3 p-2 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg border border-indigo-200 dark:border-indigo-800">
+            <div className="flex items-center space-x-2">
+              <Target className="w-3 h-3 text-indigo-600 dark:text-indigo-400 flex-shrink-0" />
+              <span className="text-xs text-indigo-700 dark:text-indigo-300 font-medium">
+                Today's Goal: {motivationalGoal}
+              </span>
+            </div>
+          </div>
+        )}
 
         {/* Timer Display */}
         <div className="text-center mb-4">
@@ -146,6 +184,15 @@ const PomodoroWidget: React.FC = () => {
              currentType === 'short-break' ? ' Short break' : ' Long break'}
           </div>
         </div>
+
+        {/* Goals Summary */}
+        {userGoals.length > 0 && (
+          <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600">
+            <div className="text-xs text-gray-500 dark:text-gray-400 text-center">
+              <span className="font-medium">{userGoals.length} Reading Goals Set</span>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
