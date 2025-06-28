@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Play, Pause, RotateCcw, Volume2, VolumeX, Clock, Coffee, Upload, FileText, BookOpen, Headphones, X } from 'lucide-react';
+import { Play, Pause, RotateCcw, Volume2, VolumeX, Clock, Coffee, Upload, FileText, BookOpen, Headphones, X, Settings } from 'lucide-react';
 import PDFReader from '../components/Reader/PDFReader';
 import EPUBReader from '../components/Reader/EPUBReader';
 import AudioPlayer from '../components/Audio/AudioPlayer';
@@ -16,9 +16,11 @@ const FocusMode: React.FC = () => {
     timeLeft,
     currentType,
     session,
+    customDuration,
     startTimer,
     pauseTimer,
-    resetTimer
+    resetTimer,
+    setCustomDuration
   } = usePomodoro();
 
   const [selectedMusic, setSelectedMusic] = useState<YouTubeMusic | null>(null);
@@ -54,10 +56,34 @@ const FocusMode: React.FC = () => {
   };
 
   const progress = currentType === 'focus' 
-    ? (25 * 60 - timeLeft) / (25 * 60)
+    ? (customDuration * 60 - timeLeft) / (customDuration * 60)
     : currentType === 'short-break' 
-      ? (5 * 60 - timeLeft) / (5 * 60)
-      : (15 * 60 - timeLeft) / (15 * 60);
+      ? (Math.max(5, Math.floor(customDuration * 0.2)) * 60 - timeLeft) / (Math.max(5, Math.floor(customDuration * 0.2)) * 60)
+      : (Math.max(10, Math.floor(customDuration * 0.4)) * 60 - timeLeft) / (Math.max(10, Math.floor(customDuration * 0.4)) * 60);
+
+  // Create gradient style based on progress
+  const getGradientStyle = () => {
+    const opacity = Math.min(0.9, 0.3 + (progress * 0.6)); // Starts at 0.3, goes to 0.9
+    
+    switch (currentType) {
+      case 'focus':
+        return {
+          background: `linear-gradient(135deg, rgba(79, 70, 229, ${opacity}) 0%, rgba(99, 102, 241, ${opacity * 0.8}) 100%)`
+        };
+      case 'short-break':
+        return {
+          background: `linear-gradient(135deg, rgba(34, 197, 94, ${opacity}) 0%, rgba(22, 163, 74, ${opacity * 0.8}) 100%)`
+        };
+      case 'long-break':
+        return {
+          background: `linear-gradient(135deg, rgba(147, 51, 234, ${opacity}) 0%, rgba(126, 34, 206, ${opacity * 0.8}) 100%)`
+        };
+      default:
+        return {
+          background: `linear-gradient(135deg, rgba(79, 70, 229, ${opacity}) 0%, rgba(99, 102, 241, ${opacity * 0.8}) 100%)`
+        };
+    }
+  };
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -118,7 +144,10 @@ const FocusMode: React.FC = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Timer Section */}
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8">
+          <div 
+            className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8"
+            style={getGradientStyle()}
+          >
             <div className="text-center">
               {/* Session Info */}
               <div className="flex items-center justify-center space-x-4 mb-6">
@@ -131,6 +160,28 @@ const FocusMode: React.FC = () => {
                   <span>{currentType === 'focus' ? 'Focus Time' : currentType === 'short-break' ? 'Short Break' : 'Long Break'}</span>
                 </div>
               </div>
+
+              {/* Manual Duration Control */}
+              {currentType === 'focus' && !isActive && (
+                <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                  <div className="flex items-center justify-center space-x-3">
+                    <Settings className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                    <span className="text-sm font-medium text-blue-700 dark:text-blue-300">Session Duration:</span>
+                    <input
+                      type="number"
+                      min="5"
+                      max="240"
+                      value={customDuration}
+                      onChange={(e) => setCustomDuration(parseInt(e.target.value) || 25)}
+                      className="w-20 px-2 py-1 text-sm border border-blue-300 dark:border-blue-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                    />
+                    <span className="text-sm text-blue-700 dark:text-blue-300">minutes</span>
+                  </div>
+                  <p className="text-xs text-blue-600 dark:text-blue-400 mt-2 text-center">
+                    Breaks will be automatically calculated: Short ({Math.max(5, Math.floor(customDuration * 0.2))} min) • Long ({Math.max(10, Math.floor(customDuration * 0.4))} min)
+                  </p>
+                </div>
+              )}
 
               {/* Circular Progress */}
               <div className="relative inline-flex items-center justify-center mb-8">
@@ -165,7 +216,12 @@ const FocusMode: React.FC = () => {
                       {formatTime(timeLeft)}
                     </div>
                     <div className="text-sm text-gray-600 dark:text-gray-400">
-                      {currentType === 'focus' ? 'Focus' : 'Break'}
+                      {currentType === 'focus' ? `${customDuration} min focus` : 
+                       currentType === 'short-break' ? `${Math.max(5, Math.floor(customDuration * 0.2))} min break` : 
+                       `${Math.max(10, Math.floor(customDuration * 0.4))} min break`}
+                    </div>
+                    <div className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                      {Math.round(progress * 100)}% complete
                     </div>
                   </div>
                 </div>
@@ -367,9 +423,9 @@ const FocusMode: React.FC = () => {
               <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/30 rounded-full flex items-center justify-center mx-auto mb-3">
                 <Clock className="w-6 h-6 theme-primary-text" />
               </div>
-              <h4 className="font-medium text-gray-900 dark:text-white mb-2">25 Minutes Focus</h4>
+              <h4 className="font-medium text-gray-900 dark:text-white mb-2">Custom Duration</h4>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                Work with complete concentration for 25 minutes
+                Set your own focus time based on your reading goals and available time
               </p>
             </div>
             <div className="text-center">
@@ -378,7 +434,7 @@ const FocusMode: React.FC = () => {
               </div>
               <h4 className="font-medium text-gray-900 dark:text-white mb-2">Digital Reading</h4>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                Upload and read PDF, EPUB files directly
+                Upload and read PDF, EPUB files directly in your browser
               </p>
             </div>
             <div className="text-center">
@@ -387,7 +443,7 @@ const FocusMode: React.FC = () => {
               </div>
               <h4 className="font-medium text-gray-900 dark:text-white mb-2">Audio Books</h4>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                Listen to audiobooks with speed controls
+                Listen to audiobooks with speed controls and progress tracking
               </p>
             </div>
             <div className="text-center">
@@ -396,7 +452,7 @@ const FocusMode: React.FC = () => {
               </div>
               <h4 className="font-medium text-gray-900 dark:text-white mb-2">Smart Breaks</h4>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                Take breaks to maintain peak performance
+                Automated breaks calculated based on your focus duration
               </p>
             </div>
           </div>

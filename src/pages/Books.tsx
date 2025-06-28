@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Search, Filter, BookOpen, Calendar, Tag, Star, Trash2, Edit3, Loader, AlertCircle, CheckCircle, Download, Upload, Settings, FileText } from 'lucide-react';
+import { Plus, Search, Filter, BookOpen, Calendar, Tag, Star, Trash2, Edit3, Loader, AlertCircle, CheckCircle, Download, Upload, Settings, FileText, SortAsc } from 'lucide-react';
 import { Book } from '../types';
 import { ISBNLookupService, ISBNBookData } from '../services/isbnLookup';
 import { PDFExportService } from '../services/pdfExport';
 
 const Books: React.FC = () => {
   const [books, setBooks] = useState<Book[]>([]);
+  const [filteredBooks, setFilteredBooks] = useState<Book[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [showAddBook, setShowAddBook] = useState(false);
@@ -33,7 +34,29 @@ const Books: React.FC = () => {
   useEffect(() => {
     const savedBooks = JSON.parse(localStorage.getItem('focusreads-books') || '[]');
     setBooks(savedBooks);
+    setFilteredBooks(savedBooks);
   }, []);
+
+  useEffect(() => {
+    filterAndSortBooks();
+  }, [books, searchTerm, statusFilter]);
+
+  const filterAndSortBooks = () => {
+    let filtered = books.filter(book => {
+      const matchesSearch = book.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           book.author.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesStatus = statusFilter === 'all' || book.status === statusFilter;
+      
+      return matchesSearch && matchesStatus;
+    });
+
+    // Sort alphabetically by title when showing all books
+    if (statusFilter === 'all') {
+      filtered = filtered.sort((a, b) => a.title.localeCompare(b.title));
+    }
+
+    setFilteredBooks(filtered);
+  };
 
   const saveBooks = (updatedBooks: Book[]) => {
     setBooks(updatedBooks);
@@ -233,14 +256,6 @@ const Books: React.FC = () => {
     }
   };
 
-  const filteredBooks = books.filter(book => {
-    const matchesSearch = book.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         book.author.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || book.status === statusFilter;
-    
-    return matchesSearch && matchesStatus;
-  });
-
   const getBookCounts = () => {
     return {
       total: books.length,
@@ -251,6 +266,11 @@ const Books: React.FC = () => {
   };
 
   const counts = getBookCounts();
+
+  const handleStatClick = (filter: string) => {
+    setStatusFilter(filter);
+    setSearchTerm(''); // Clear search when filtering by status
+  };
 
   return (
     <div className="min-h-screen theme-background py-8">
@@ -351,24 +371,53 @@ const Books: React.FC = () => {
           </div>
         )}
 
-        {/* Stats */}
+        {/* Stats - Now Clickable */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <div className="themed-card rounded-lg shadow-lg p-6 text-center">
-            <div className="text-2xl font-bold theme-text mb-1">{counts.total}</div>
-            <div className="text-sm theme-text-secondary">Total Books</div>
-          </div>
-          <div className="themed-card rounded-lg shadow-lg p-6 text-center">
+          <button
+            onClick={() => handleStatClick('all')}
+            className={`themed-card rounded-lg shadow-lg p-6 text-center transition-all hover:shadow-xl hover:scale-105 ${
+              statusFilter === 'all' ? 'ring-2 ring-indigo-500 bg-indigo-50 dark:bg-indigo-900/20' : ''
+            }`}
+          >
+            <div className="flex items-center justify-center space-x-2 mb-2">
+              <SortAsc className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+              <div className="text-2xl font-bold theme-text">{counts.total}</div>
+            </div>
+            <div className="text-sm theme-text-secondary">All Books</div>
+            {statusFilter === 'all' && (
+              <div className="text-xs text-indigo-600 dark:text-indigo-400 mt-1">Sorted A-Z</div>
+            )}
+          </button>
+          
+          <button
+            onClick={() => handleStatClick('reading')}
+            className={`themed-card rounded-lg shadow-lg p-6 text-center transition-all hover:shadow-xl hover:scale-105 ${
+              statusFilter === 'reading' ? 'ring-2 ring-blue-500 bg-blue-50 dark:bg-blue-900/20' : ''
+            }`}
+          >
             <div className="text-2xl font-bold text-blue-600 dark:text-blue-400 mb-1">{counts.reading}</div>
             <div className="text-sm theme-text-secondary">Reading</div>
-          </div>
-          <div className="themed-card rounded-lg shadow-lg p-6 text-center">
+          </button>
+          
+          <button
+            onClick={() => handleStatClick('completed')}
+            className={`themed-card rounded-lg shadow-lg p-6 text-center transition-all hover:shadow-xl hover:scale-105 ${
+              statusFilter === 'completed' ? 'ring-2 ring-green-500 bg-green-50 dark:bg-green-900/20' : ''
+            }`}
+          >
             <div className="text-2xl font-bold text-green-600 dark:text-green-400 mb-1">{counts.completed}</div>
             <div className="text-sm theme-text-secondary">Completed</div>
-          </div>
-          <div className="themed-card rounded-lg shadow-lg p-6 text-center">
+          </button>
+          
+          <button
+            onClick={() => handleStatClick('want-to-read')}
+            className={`themed-card rounded-lg shadow-lg p-6 text-center transition-all hover:shadow-xl hover:scale-105 ${
+              statusFilter === 'want-to-read' ? 'ring-2 ring-yellow-500 bg-yellow-50 dark:bg-yellow-900/20' : ''
+            }`}
+          >
             <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-400 mb-1">{counts.wantToRead}</div>
             <div className="text-sm theme-text-secondary">Want to Read</div>
-          </div>
+          </button>
         </div>
 
         {/* Filters */}
@@ -401,6 +450,20 @@ const Books: React.FC = () => {
               </select>
             </div>
           </div>
+          
+          {statusFilter !== 'all' && (
+            <div className="mt-4 flex items-center justify-between">
+              <div className="text-sm theme-text-secondary">
+                Showing {filteredBooks.length} of {counts.total} books
+              </div>
+              <button
+                onClick={() => handleStatClick('all')}
+                className="text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-200 transition-colors"
+              >
+                Show All Books
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Books Grid */}
@@ -489,18 +552,31 @@ const Books: React.FC = () => {
           <div className="text-center py-12">
             <BookOpen className="w-16 h-16 theme-text-secondary mx-auto mb-4" />
             <h3 className="text-lg font-medium theme-text mb-2">
-              No books found
+              {statusFilter === 'all' ? 'No books found' : `No ${statusFilter.replace('-', ' ')} books`}
             </h3>
             <p className="theme-text-secondary mb-6">
-              Start building your personal library by adding some books
+              {statusFilter === 'all' 
+                ? 'Start building your personal library by adding some books'
+                : `You don't have any books marked as ${statusFilter.replace('-', ' ')} yet`
+              }
             </p>
-            <button
-              onClick={() => setShowAddBook(true)}
-              className="themed-button-primary px-6 py-3 rounded-lg font-medium transition-colors inline-flex items-center space-x-2"
-            >
-              <Plus className="w-5 h-5" />
-              <span>Add Your First Book</span>
-            </button>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <button
+                onClick={() => setShowAddBook(true)}
+                className="themed-button-primary px-6 py-3 rounded-lg font-medium transition-colors inline-flex items-center space-x-2"
+              >
+                <Plus className="w-5 h-5" />
+                <span>Add Your First Book</span>
+              </button>
+              {statusFilter !== 'all' && (
+                <button
+                  onClick={() => handleStatClick('all')}
+                  className="themed-button-secondary px-6 py-3 rounded-lg font-medium transition-colors"
+                >
+                  View All Books
+                </button>
+              )}
+            </div>
           </div>
         )}
 

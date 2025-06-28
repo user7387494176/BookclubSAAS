@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ExternalLink, ShoppingCart, Heart, Star, BookOpen, Check, RefreshCw, Settings, Target, Download, Upload, TrendingUp } from 'lucide-react';
+import { ExternalLink, ShoppingCart, Heart, Star, BookOpen, Check, RefreshCw, Settings, Target, Download, Upload, TrendingUp, Volume2, VolumeX } from 'lucide-react';
 import { AmazonBooksService, AmazonBook } from '../services/amazonBooks';
 
 interface UserPreferences {
@@ -20,6 +20,7 @@ const Recommendations: React.FC = () => {
   const [userPreferences, setUserPreferences] = useState<UserPreferences | null>(null);
   const [availableGenres, setAvailableGenres] = useState<string[]>([]);
   const [isTrendingMode, setIsTrendingMode] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(true);
 
   // Trending genres when no survey is completed
   const trendingGenres = [
@@ -136,7 +137,40 @@ const Recommendations: React.FC = () => {
     }
   };
 
-  const addToMyBooks = (book: AmazonBook) => {
+  const playActionSound = (action: 'interested' | 'read') => {
+    if (!soundEnabled) return;
+    
+    try {
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      if (action === 'interested') {
+        // Heart sound - warm, pleasant tone
+        oscillator.frequency.setValueAtTime(523, audioContext.currentTime); // C5
+        oscillator.frequency.setValueAtTime(659, audioContext.currentTime + 0.1); // E5
+        oscillator.frequency.setValueAtTime(784, audioContext.currentTime + 0.2); // G5
+      } else {
+        // Read sound - completion chime
+        oscillator.frequency.setValueAtTime(784, audioContext.currentTime); // G5
+        oscillator.frequency.setValueAtTime(1047, audioContext.currentTime + 0.1); // C6
+        oscillator.frequency.setValueAtTime(1319, audioContext.currentTime + 0.2); // E6
+      }
+      
+      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.4);
+      
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + 0.4);
+    } catch (error) {
+      console.log('Audio context not available');
+    }
+  };
+
+  const addToMyBooks = async (book: AmazonBook) => {
     const existingBooks = JSON.parse(localStorage.getItem('focusreads-books') || '[]');
     const isAlreadyAdded = existingBooks.some((b: any) => b.id === book.id);
     
@@ -144,6 +178,10 @@ const Recommendations: React.FC = () => {
       const bookWithStatus = { ...book, status: 'want-to-read', dateAdded: new Date().toISOString() };
       localStorage.setItem('focusreads-books', JSON.stringify([...existingBooks, bookWithStatus]));
     }
+    
+    // Play sound and replace book
+    playActionSound('interested');
+    await generateNewRecommendation(book.id, book.genre || 'fiction');
   };
 
   const markAsRead = async (bookId: string) => {
@@ -157,6 +195,8 @@ const Recommendations: React.FC = () => {
       
       setReadBooks(prev => new Set([...prev, bookId]));
       
+      // Play sound and replace book
+      playActionSound('read');
       await generateNewRecommendation(bookId, book.genre || 'fiction');
     }
   };
@@ -297,8 +337,22 @@ const Recommendations: React.FC = () => {
               </p>
             </div>
             
-            {/* Export/Import Controls */}
+            {/* Controls */}
             <div className="flex items-center space-x-3 mt-4 sm:mt-0">
+              {/* Sound Toggle */}
+              <button
+                onClick={() => setSoundEnabled(!soundEnabled)}
+                className={`p-2 rounded-lg transition-colors ${
+                  soundEnabled 
+                    ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400' 
+                    : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
+                }`}
+                title={soundEnabled ? 'Sound enabled' : 'Sound disabled'}
+              >
+                {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+              </button>
+              
+              {/* Export/Import Controls */}
               <button
                 onClick={exportData}
                 className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors inline-flex items-center space-x-2"
@@ -420,7 +474,7 @@ const Recommendations: React.FC = () => {
         {/* Books Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {books.map((book) => (
-            <div key={book.id} className="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow relative">
+            <div key={book.id} className="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 relative group">
               {refreshingBook === book.id && (
                 <div className="absolute inset-0 bg-white/80 dark:bg-gray-800/80 flex items-center justify-center z-10 rounded-lg">
                   <div className="text-center">
@@ -478,19 +532,28 @@ const Recommendations: React.FC = () => {
                 </p>
 
                 <div className="space-y-3">
-                  {/* Already Read Button */}
-                  <div className="flex justify-center">
+                  {/* Quick Actions with Swipe-like Animation */}
+                  <div className="flex justify-center space-x-3">
                     <button
                       onClick={() => markAsRead(book.id)}
                       disabled={readBooks.has(book.id) || refreshingBook === book.id}
-                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors inline-flex items-center space-x-2 ${
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 transform hover:scale-105 inline-flex items-center space-x-2 ${
                         readBooks.has(book.id)
                           ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 cursor-not-allowed'
-                          : 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-900/50'
+                          : 'bg-green-600 hover:bg-green-700 text-white shadow-lg hover:shadow-xl'
                       }`}
                     >
                       <Check className="w-4 h-4" />
                       <span>{readBooks.has(book.id) ? 'Already Read' : 'Mark as Read'}</span>
+                    </button>
+                    
+                    <button
+                      onClick={() => addToMyBooks(book)}
+                      disabled={refreshingBook === book.id}
+                      className="bg-pink-600 hover:bg-pink-700 text-white px-4 py-2 rounded-lg font-medium transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl inline-flex items-center space-x-2"
+                    >
+                      <Heart className="w-4 h-4" />
+                      <span>Interested</span>
                     </button>
                   </div>
 
@@ -505,13 +568,6 @@ const Recommendations: React.FC = () => {
                       <span>Buy</span>
                       {book.price && <span className="text-xs">({book.price})</span>}
                     </a>
-                    <button
-                      onClick={() => addToMyBooks(book)}
-                      className="bg-pink-100 dark:bg-pink-900/30 hover:bg-pink-200 dark:hover:bg-pink-900/50 text-pink-700 dark:text-pink-300 px-4 py-2 rounded-lg font-medium transition-colors inline-flex items-center space-x-2"
-                    >
-                      <Heart className="w-4 h-4" />
-                      <span>Interested</span>
-                    </button>
                   </div>
                   
                   <div className="flex space-x-2">

@@ -6,6 +6,7 @@ interface PomodoroSession {
   endTime?: string;
   type: 'focus' | 'short-break' | 'long-break';
   completed: boolean;
+  duration: number; // in minutes
 }
 
 interface PomodoroContextType {
@@ -14,14 +15,17 @@ interface PomodoroContextType {
   currentType: 'focus' | 'short-break' | 'long-break';
   session: number;
   totalSessions: number;
+  totalBreaks: number;
   sessions: PomodoroSession[];
   isMinimized: boolean;
+  customDuration: number;
   startTimer: () => void;
   pauseTimer: () => void;
   resetTimer: () => void;
   skipBreak: () => void;
   toggleMinimized: () => void;
   playChime: () => void;
+  setCustomDuration: (minutes: number) => void;
 }
 
 const PomodoroContext = createContext<PomodoroContextType | undefined>(undefined);
@@ -32,9 +36,11 @@ export const PomodoroProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [currentType, setCurrentType] = useState<'focus' | 'short-break' | 'long-break'>('focus');
   const [session, setSession] = useState(1);
   const [totalSessions, setTotalSessions] = useState(0);
+  const [totalBreaks, setTotalBreaks] = useState(0);
   const [sessions, setSessions] = useState<PomodoroSession[]>([]);
   const [isMinimized, setIsMinimized] = useState(true);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const [customDuration, setCustomDuration] = useState(25); // Default 25 minutes
   
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -50,13 +56,27 @@ export const PomodoroProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     // Load saved data
     const savedSessions = localStorage.getItem('focusreads-pomodoro-sessions');
     const savedTotalSessions = localStorage.getItem('focusreads-pomodoro-total');
+    const savedTotalBreaks = localStorage.getItem('focusreads-pomodoro-breaks');
     const savedState = localStorage.getItem('focusreads-pomodoro-state');
+    
+    // Load custom duration from user preferences
+    const preferences = localStorage.getItem('focusreads-preferences');
+    if (preferences) {
+      const parsed = JSON.parse(preferences);
+      if (parsed.pomodoroMinutes) {
+        setCustomDuration(parsed.pomodoroMinutes);
+        setTimeLeft(parsed.pomodoroMinutes * 60);
+      }
+    }
     
     if (savedSessions) {
       setSessions(JSON.parse(savedSessions));
     }
     if (savedTotalSessions) {
       setTotalSessions(parseInt(savedTotalSessions));
+    }
+    if (savedTotalBreaks) {
+      setTotalBreaks(parseInt(savedTotalBreaks));
     }
     
     // Restore timer state if it was running
@@ -84,7 +104,8 @@ export const PomodoroProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   useEffect(() => {
     localStorage.setItem('focusreads-pomodoro-sessions', JSON.stringify(sessions));
     localStorage.setItem('focusreads-pomodoro-total', totalSessions.toString());
-  }, [sessions, totalSessions]);
+    localStorage.setItem('focusreads-pomodoro-breaks', totalBreaks.toString());
+  }, [sessions, totalSessions, totalBreaks]);
 
   // Save timer state when active
   useEffect(() => {
@@ -92,8 +113,7 @@ export const PomodoroProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       const state = {
         isActive,
         startTime: startTimeRef.current,
-        initialTime: currentType === 'focus' ? 25 * 60 : 
-                    currentType === 'short-break' ? 5 * 60 : 15 * 60,
+        initialTime: getSessionDuration(currentType),
         currentType,
         session
       };
@@ -103,14 +123,22 @@ export const PomodoroProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   }, [isActive, currentType, session]);
 
+  const getSessionDuration = (type: 'focus' | 'short-break' | 'long-break') => {
+    switch (type) {
+      case 'focus': return customDuration * 60;
+      case 'short-break': return Math.max(5, Math.floor(customDuration * 0.2)) * 60; // 20% of focus time, min 5 min
+      case 'long-break': return Math.max(10, Math.floor(customDuration * 0.4)) * 60; // 40% of focus time, min 10 min
+      default: return customDuration * 60;
+    }
+  };
+
   // Timer logic with persistent timing
   useEffect(() => {
     if (isActive) {
       intervalRef.current = setInterval(() => {
         if (startTimeRef.current) {
           const elapsed = Math.floor((Date.now() - startTimeRef.current - pausedTimeRef.current) / 1000);
-          const initialTime = currentType === 'focus' ? 25 * 60 : 
-                             currentType === 'short-break' ? 5 * 60 : 15 * 60;
+          const initialTime = getSessionDuration(currentType);
           const remaining = initialTime - elapsed;
           
           if (remaining <= 0) {
@@ -132,7 +160,7 @@ export const PomodoroProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         clearInterval(intervalRef.current);
       }
     };
-  }, [isActive, currentType]);
+  }, [isActive, currentType, customDuration]);
 
   const playChime = () => {
     // Create a simple chime sound using Web Audio API
@@ -158,19 +186,59 @@ export const PomodoroProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   };
 
+  const pauseMusic = () => {
+    // Try to pause any YouTube videos
+    const iframes = document.querySelectorAll('iframe[src*="youtube"]');
+    iframes.forEach(iframe => {
+      try {
+        (iframe as HTMLIFrameElement).contentWindow?.postMessage(
+          '{"event":"command","func":"pauseVideo","args":""}',
+          '*'
+        );
+      } catch (error) {
+        console.log('Could not pause YouTube video');
+      }
+    });
+  };
+
+  const showBreakMessage = (breakType: 'short-break' | 'long-break') => {
+    const messages = {
+      'short-break': [
+        '🧘‍♀️ Time for a short break! Stand up and stretch.',
+        '💧 Take a moment to hydrate and rest your eyes.',
+        '🌱 Step away from your screen and take a few deep breaths.',
+        '🚶‍♂️ A quick walk will refresh your mind.',
+        '☕ Perfect time for a quick coffee or tea break!'
+      ],
+      'long-break': [
+        '🍃 Time for a longer break! Go for a walk outside.',
+        '🥗 Consider having a healthy snack or meal.',
+        '📞 Great time to connect with a friend or family member.',
+        '🧘‍♀️ Try some meditation or light exercise.',
+        '📚 Maybe read a few pages of a physical book!',
+        '🌞 Get some fresh air and natural light.'
+      ]
+    };
+    
+    const randomMessage = messages[breakType][Math.floor(Math.random() * messages[breakType].length)];
+    
+    // Show browser notification if permission granted
+    if (Notification.permission === 'granted') {
+      new Notification('FocusReads Break Time! 🎉', {
+        body: randomMessage,
+        icon: '/vite.svg'
+      });
+    }
+    
+    // You could also show an in-app modal here
+    alert(`Break Time! 🎉\n\n${randomMessage}`);
+  };
+
   const handleSessionComplete = () => {
     setIsActive(false);
     startTimeRef.current = null;
     pausedTimeRef.current = 0;
     playChime();
-    
-    // Show browser notification if permission granted
-    if (Notification.permission === 'granted') {
-      new Notification('FocusReads Timer', {
-        body: `${currentType === 'focus' ? 'Focus session' : 'Break'} completed!`,
-        icon: '/vite.svg'
-      });
-    }
     
     // Complete current session
     if (currentSessionId) {
@@ -183,19 +251,34 @@ export const PomodoroProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     if (currentType === 'focus') {
       setTotalSessions(prev => prev + 1);
-      // Determine break type
+      
+      // Determine break type based on session count
       const nextBreakType = session % 4 === 0 ? 'long-break' : 'short-break';
       setCurrentType(nextBreakType);
-      setTimeLeft(nextBreakType === 'long-break' ? 15 * 60 : 5 * 60);
+      setTimeLeft(getSessionDuration(nextBreakType));
       
-      // Auto-start break
+      // Pause music and show break message
+      pauseMusic();
+      showBreakMessage(nextBreakType);
+      
+      // Auto-start break after a short delay
       setTimeout(() => {
         startBreakSession(nextBreakType);
-      }, 1000);
+      }, 2000);
     } else {
+      // Break completed
+      setTotalBreaks(prev => prev + 1);
       setCurrentType('focus');
-      setTimeLeft(25 * 60);
+      setTimeLeft(getSessionDuration('focus'));
       setSession(prev => prev + 1);
+      
+      // Show completion message
+      if (Notification.permission === 'granted') {
+        new Notification('Break Complete! 📚', {
+          body: 'Ready to get back to focused reading?',
+          icon: '/vite.svg'
+        });
+      }
     }
   };
 
@@ -204,7 +287,8 @@ export const PomodoroProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       id: Date.now().toString(),
       startTime: new Date().toISOString(),
       type: breakType,
-      completed: false
+      completed: false,
+      duration: Math.floor(getSessionDuration(breakType) / 60)
     };
     
     setSessions(prev => [...prev, newSession]);
@@ -225,7 +309,8 @@ export const PomodoroProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         id: Date.now().toString(),
         startTime: new Date().toISOString(),
         type: 'focus',
-        completed: false
+        completed: false,
+        duration: customDuration
       };
       
       setSessions(prev => [...prev, newSession]);
@@ -260,11 +345,7 @@ export const PomodoroProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setCurrentSessionId(null);
     }
     
-    if (currentType === 'focus') {
-      setTimeLeft(25 * 60);
-    } else {
-      setTimeLeft(currentType === 'long-break' ? 15 * 60 : 5 * 60);
-    }
+    setTimeLeft(getSessionDuration(currentType));
   };
 
   const skipBreak = () => {
@@ -279,16 +360,29 @@ export const PomodoroProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             ? { ...s, endTime: new Date().toISOString(), completed: true }
             : s
         ));
+        setTotalBreaks(prev => prev + 1);
       }
       
       setCurrentType('focus');
-      setTimeLeft(25 * 60);
+      setTimeLeft(getSessionDuration('focus'));
       setSession(prev => prev + 1);
     }
   };
 
   const toggleMinimized = () => {
     setIsMinimized(!isMinimized);
+  };
+
+  const handleSetCustomDuration = (minutes: number) => {
+    setCustomDuration(minutes);
+    if (currentType === 'focus' && !isActive) {
+      setTimeLeft(minutes * 60);
+    }
+    
+    // Save to preferences
+    const preferences = JSON.parse(localStorage.getItem('focusreads-preferences') || '{}');
+    preferences.pomodoroMinutes = minutes;
+    localStorage.setItem('focusreads-preferences', JSON.stringify(preferences));
   };
 
   return (
@@ -298,14 +392,17 @@ export const PomodoroProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       currentType,
       session,
       totalSessions,
+      totalBreaks,
       sessions,
       isMinimized,
+      customDuration,
       startTimer,
       pauseTimer,
       resetTimer,
       skipBreak,
       toggleMinimized,
-      playChime
+      playChime,
+      setCustomDuration: handleSetCustomDuration
     }}>
       {children}
     </PomodoroContext.Provider>

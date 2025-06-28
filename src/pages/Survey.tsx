@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Check, Heart, Zap, BookOpen, Brain, Moon, Users, Target, Lightbulb, Globe, Trophy } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Check, Heart, Zap, BookOpen, Brain, Moon, Users, Target, Lightbulb, Globe, Trophy, Clock } from 'lucide-react';
 
 const Survey: React.FC = () => {
   const navigate = useNavigate();
@@ -10,6 +10,7 @@ const Survey: React.FC = () => {
     mood: '',
     readingGoals: [] as string[],
     readingTime: '',
+    customReadingTime: '',
     preferredLength: ''
   });
 
@@ -166,10 +167,11 @@ const Survey: React.FC = () => {
   const allGoals = Object.values(readingGoalCategories).flatMap(category => category.goals);
 
   const readingTimes = [
-    { value: '15min', label: '15 minutes or less' },
-    { value: '30min', label: '30 minutes' },
-    { value: '1hour', label: '1 hour' },
-    { value: '2hours', label: '2+ hours' }
+    { value: '15', label: '15 minutes' },
+    { value: '30', label: '30 minutes' },
+    { value: '45', label: '45 minutes' },
+    { value: '60', label: '1 hour' },
+    { value: 'custom', label: 'Custom time (enter below)' }
   ];
 
   // Updated book length preferences with detailed descriptions
@@ -393,27 +395,64 @@ const Survey: React.FC = () => {
     },
     {
       title: 'How much time do you have for reading?',
-      subtitle: 'Choose your typical reading session length',
+      subtitle: 'This will set your default Pomodoro session duration to help you achieve your reading goals',
       content: (
-        <div className="space-y-3">
-          {readingTimes.map((time) => (
-            <button
-              key={time.value}
-              onClick={() => setPreferences(prev => ({ ...prev, readingTime: time.value }))}
-              className={`w-full p-4 rounded-lg border-2 text-left transition-all ${
-                preferences.readingTime === time.value
-                  ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20'
-                  : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <span className="font-medium">{time.label}</span>
-                {preferences.readingTime === time.value && (
-                  <Check className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+        <div className="space-y-6">
+          <div className="space-y-3">
+            {readingTimes.map((time) => (
+              <button
+                key={time.value}
+                onClick={() => setPreferences(prev => ({ ...prev, readingTime: time.value }))}
+                className={`w-full p-4 rounded-lg border-2 text-left transition-all ${
+                  preferences.readingTime === time.value
+                    ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20'
+                    : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <Clock className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                    <span className="font-medium">{time.label}</span>
+                  </div>
+                  {preferences.readingTime === time.value && (
+                    <Check className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                  )}
+                </div>
+                {time.value !== 'custom' && (
+                  <div className="mt-2 ml-8 text-sm text-gray-600 dark:text-gray-400">
+                    Your Pomodoro sessions will be set to {time.label} by default
+                  </div>
                 )}
-              </div>
-            </button>
-          ))}
+              </button>
+            ))}
+          </div>
+
+          {preferences.readingTime === 'custom' && (
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+              <label className="block text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">
+                Enter your preferred reading time (in minutes):
+              </label>
+              <input
+                type="number"
+                min="5"
+                max="240"
+                value={preferences.customReadingTime}
+                onChange={(e) => setPreferences(prev => ({ ...prev, customReadingTime: e.target.value }))}
+                placeholder="e.g., 90 for 1.5 hours"
+                className="w-full px-3 py-2 border border-blue-300 dark:border-blue-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+              <p className="text-xs text-blue-700 dark:text-blue-300 mt-2">
+                This will be your default Pomodoro session duration. You can always adjust it manually in Focus Mode.
+              </p>
+            </div>
+          )}
+
+          <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+            <p className="text-sm text-amber-800 dark:text-amber-200">
+              <strong>Smart Integration:</strong> Your reading time preference will automatically configure your Pomodoro timer 
+              to match your available time, helping you stay focused and achieve your reading goals efficiently.
+            </p>
+          </div>
         </div>
       )
     },
@@ -491,7 +530,15 @@ const Survey: React.FC = () => {
       setCurrentStep(currentStep + 1);
     } else {
       // Save preferences and navigate to recommendations
-      localStorage.setItem('focusreads-preferences', JSON.stringify(preferences));
+      const finalPreferences = {
+        ...preferences,
+        // Set default Pomodoro duration based on reading time
+        pomodoroMinutes: preferences.readingTime === 'custom' 
+          ? parseInt(preferences.customReadingTime) || 25
+          : parseInt(preferences.readingTime) || 25
+      };
+      
+      localStorage.setItem('focusreads-preferences', JSON.stringify(finalPreferences));
       navigate('/recommendations');
     }
   };
@@ -507,7 +554,11 @@ const Survey: React.FC = () => {
       case 0: return preferences.genres.length > 0;
       case 1: return preferences.mood !== '';
       case 2: return preferences.readingGoals.length > 0;
-      case 3: return preferences.readingTime !== '';
+      case 3: 
+        if (preferences.readingTime === 'custom') {
+          return preferences.customReadingTime !== '' && parseInt(preferences.customReadingTime) >= 5;
+        }
+        return preferences.readingTime !== '';
       case 4: return preferences.preferredLength !== '';
       default: return false;
     }
@@ -519,6 +570,14 @@ const Survey: React.FC = () => {
 
   const getSelectedLength = () => {
     return bookLengths.find(length => length.value === preferences.preferredLength);
+  };
+
+  const getReadingTimeDisplay = () => {
+    if (preferences.readingTime === 'custom') {
+      return preferences.customReadingTime ? `${preferences.customReadingTime} minutes` : 'Custom time';
+    }
+    const time = readingTimes.find(t => t.value === preferences.readingTime);
+    return time ? time.label : '';
   };
 
   return (
@@ -580,6 +639,12 @@ const Survey: React.FC = () => {
               {currentStep === 2 && (
                 <div className="text-sm text-gray-500 dark:text-gray-400">
                   Goals: {preferences.readingGoals.length} selected
+                </div>
+              )}
+
+              {currentStep === 3 && preferences.readingTime && (
+                <div className="text-sm text-gray-500 dark:text-gray-400">
+                  Time: {getReadingTimeDisplay()}
                 </div>
               )}
 
