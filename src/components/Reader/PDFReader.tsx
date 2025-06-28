@@ -1,5 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, RotateCw, Download, BookOpen, FileText } from 'lucide-react';
+import * as pdfjsLib from 'pdfjs-dist';
+
+// Set up PDF.js worker
+pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.worker.min.js`;
 
 interface PDFReaderProps {
   file: File | null;
@@ -11,23 +15,69 @@ const PDFReader: React.FC<PDFReaderProps> = ({ file, onClose }) => {
   const [totalPages, setTotalPages] = useState(0);
   const [zoom, setZoom] = useState(1);
   const [rotation, setRotation] = useState(0);
-  const [fileUrl, setFileUrl] = useState<string>('');
+  const [pdfDoc, setPdfDoc] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string>('');
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     if (file) {
-      const url = URL.createObjectURL(file);
-      setFileUrl(url);
-      
-      // For demo purposes, we'll simulate PDF loading
-      // In a real implementation, you'd use PDF.js library
-      setTotalPages(Math.floor(Math.random() * 50) + 10);
-      
-      return () => {
-        URL.revokeObjectURL(url);
-      };
+      loadPDF();
     }
   }, [file]);
+
+  useEffect(() => {
+    if (pdfDoc && canvasRef.current) {
+      renderPage();
+    }
+  }, [pdfDoc, currentPage, zoom, rotation]);
+
+  const loadPDF = async () => {
+    if (!file) return;
+    
+    setLoading(true);
+    setError('');
+    
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      setPdfDoc(pdf);
+      setTotalPages(pdf.numPages);
+      setLoading(false);
+    } catch (err) {
+      console.error('Error loading PDF:', err);
+      setError('Failed to load PDF file');
+      setLoading(false);
+    }
+  };
+
+  const renderPage = async () => {
+    if (!pdfDoc || !canvasRef.current) return;
+
+    try {
+      const page = await pdfDoc.getPage(currentPage);
+      const canvas = canvasRef.current;
+      const context = canvas.getContext('2d');
+      
+      const viewport = page.getViewport({ 
+        scale: zoom,
+        rotation: rotation 
+      });
+      
+      canvas.height = viewport.height;
+      canvas.width = viewport.width;
+      
+      const renderContext = {
+        canvasContext: context,
+        viewport: viewport
+      };
+      
+      await page.render(renderContext).promise;
+    } catch (err) {
+      console.error('Error rendering page:', err);
+      setError('Failed to render page');
+    }
+  };
 
   const handlePrevPage = () => {
     if (currentPage > 1) {
@@ -51,6 +101,19 @@ const PDFReader: React.FC<PDFReaderProps> = ({ file, onClose }) => {
 
   const handleRotate = () => {
     setRotation((rotation + 90) % 360);
+  };
+
+  const handleDownload = () => {
+    if (file) {
+      const url = URL.createObjectURL(file);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = file.name;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
   };
 
   if (!file) return null;
@@ -82,8 +145,8 @@ const PDFReader: React.FC<PDFReaderProps> = ({ file, onClose }) => {
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
-            <span className="text-sm">
-              {currentPage} / {totalPages}
+            <span className="text-sm min-w-[80px] text-center">
+              {totalPages > 0 ? `${currentPage} / ${totalPages}` : 'Loading...'}
             </span>
             <button
               onClick={handleNextPage}
@@ -119,61 +182,48 @@ const PDFReader: React.FC<PDFReaderProps> = ({ file, onClose }) => {
             <RotateCw className="w-4 h-4" />
           </button>
           
-          <a
-            href={fileUrl}
-            download={file.name}
+          <button
+            onClick={handleDownload}
             className="p-2 rounded-lg bg-gray-800 hover:bg-gray-700 transition-colors"
           >
             <Download className="w-4 h-4" />
-          </a>
+          </button>
         </div>
       </div>
 
       {/* Reader Content */}
-      <div className="flex-1 flex items-center justify-center p-4 overflow-auto">
-        <div 
-          className="bg-white shadow-2xl"
-          style={{ 
-            transform: `scale(${zoom}) rotate(${rotation}deg)`,
-            transformOrigin: 'center'
-          }}
-        >
-          {/* PDF Content Placeholder */}
-          <div className="w-[595px] h-[842px] bg-white border border-gray-300 p-8 flex flex-col">
-            <div className="text-center mb-8">
-              <h1 className="text-2xl font-bold text-gray-900 mb-4">
-                {file.name.replace(/\.[^/.]+$/, "")}
-              </h1>
-              <div className="text-sm text-gray-600">Page {currentPage}</div>
-            </div>
-            
-            <div className="flex-1 space-y-4 text-gray-800">
-              <p className="text-justify leading-relaxed">
-                This is a simulated PDF viewer. In a production environment, you would integrate 
-                with PDF.js or a similar library to render actual PDF content. The viewer supports 
-                zoom, rotation, and page navigation controls.
-              </p>
-              
-              <p className="text-justify leading-relaxed">
-                Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor 
-                incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud 
-                exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
-              </p>
-              
-              <p className="text-justify leading-relaxed">
-                Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu 
-                fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in 
-                culpa qui officia deserunt mollit anim id est laborum.
-              </p>
-              
-              <div className="mt-8 pt-4 border-t border-gray-200">
-                <p className="text-sm text-gray-500 text-center">
-                  Simulated content for page {currentPage} of {totalPages}
-                </p>
-              </div>
-            </div>
+      <div className="flex-1 flex items-center justify-center p-4 overflow-auto bg-gray-800">
+        {loading && (
+          <div className="text-center text-white">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+            <p>Loading PDF...</p>
           </div>
-        </div>
+        )}
+        
+        {error && (
+          <div className="text-center text-red-400">
+            <p className="text-lg mb-4">{error}</p>
+            <button
+              onClick={onClose}
+              className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        )}
+        
+        {!loading && !error && (
+          <div className="bg-white shadow-2xl max-w-full max-h-full overflow-auto">
+            <canvas
+              ref={canvasRef}
+              className="max-w-full max-h-full"
+              style={{
+                display: 'block',
+                margin: '0 auto'
+              }}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

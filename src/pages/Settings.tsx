@@ -40,6 +40,7 @@ const Settings: React.FC = () => {
       books: JSON.parse(localStorage.getItem('focusreads-books') || '[]'),
       notes: JSON.parse(localStorage.getItem('focusreads-notes') || '[]'),
       preferences: JSON.parse(localStorage.getItem('focusreads-preferences') || '{}'),
+      pomodoroSessions: JSON.parse(localStorage.getItem('focusreads-pomodoro-sessions') || '[]'),
       settings: {
         theme: currentTheme,
         isDark,
@@ -64,9 +65,19 @@ const Settings: React.FC = () => {
       localStorage.removeItem('focusreads-notes');
       localStorage.removeItem('focusreads-preferences');
       localStorage.removeItem('focusreads-background');
+      localStorage.removeItem('focusreads-pomodoro-sessions');
+      localStorage.removeItem('focusreads-pomodoro-total');
+      localStorage.removeItem('focusreads-pomodoro-state');
       setCustomBackground('');
       alert('All data has been cleared.');
     }
+  };
+
+  const getThemeColorStyle = (themeKey: string) => {
+    const theme = themes[themeKey as keyof typeof themes];
+    return {
+      background: `linear-gradient(135deg, ${theme.primary}, ${theme.secondary}, ${theme.accent})`
+    };
   };
 
   return (
@@ -148,10 +159,7 @@ const Settings: React.FC = () => {
                 {Object.entries(themes).map(([key, theme]) => (
                   <button
                     key={key}
-                    onClick={() => {
-                      setTheme(key);
-                      setPreviewTheme(key);
-                    }}
+                    onClick={() => setTheme(key)}
                     className={`p-3 rounded-lg border-2 transition-all ${
                       currentTheme === key
                         ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20'
@@ -159,13 +167,30 @@ const Settings: React.FC = () => {
                     }`}
                   >
                     <div className="flex items-center space-x-2 mb-2">
-                      <div className={`w-4 h-4 rounded-full bg-${theme.primary}-500`}></div>
-                      <div className={`w-4 h-4 rounded-full bg-${theme.secondary}-500`}></div>
-                      <div className={`w-4 h-4 rounded-full bg-${theme.accent}-500`}></div>
+                      <div 
+                        className="w-4 h-4 rounded-full"
+                        style={{ backgroundColor: theme.primary }}
+                      />
+                      <div 
+                        className="w-4 h-4 rounded-full"
+                        style={{ backgroundColor: theme.secondary }}
+                      />
+                      <div 
+                        className="w-4 h-4 rounded-full"
+                        style={{ backgroundColor: theme.accent }}
+                      />
                     </div>
                     <span className="text-sm font-medium text-gray-900 dark:text-white">
                       {theme.name}
                     </span>
+                    {currentTheme === key && (
+                      <div className="mt-2">
+                        <div 
+                          className="w-full h-2 rounded-full"
+                          style={getThemeColorStyle(key)}
+                        />
+                      </div>
+                    )}
                   </button>
                 ))}
               </div>
@@ -223,7 +248,7 @@ const Settings: React.FC = () => {
                     <div className="flex space-x-2">
                       <button
                         onClick={applyCustomBackground}
-                        className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition-colors inline-flex items-center space-x-2"
+                        className="theme-primary hover:opacity-90 text-white px-4 py-2 rounded-lg font-medium transition-colors inline-flex items-center space-x-2"
                       >
                         <Save className="w-4 h-4" />
                         <span>Apply Background</span>
@@ -253,12 +278,12 @@ const Settings: React.FC = () => {
                     Export Data
                   </h3>
                   <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Download all your books, notes, and preferences
+                    Download all your books, notes, preferences, and Pomodoro sessions
                   </p>
                 </div>
                 <button
                   onClick={exportData}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition-colors inline-flex items-center space-x-2"
+                  className="theme-primary hover:opacity-90 text-white px-4 py-2 rounded-lg font-medium transition-colors inline-flex items-center space-x-2"
                 >
                   <Download className="w-4 h-4" />
                   <span>Export</span>
@@ -272,7 +297,7 @@ const Settings: React.FC = () => {
                       Clear All Data
                     </h3>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
-                      Remove all books, notes, and settings (cannot be undone)
+                      Remove all books, notes, settings, and Pomodoro data (cannot be undone)
                     </p>
                   </div>
                   <button
@@ -303,11 +328,18 @@ const Settings: React.FC = () => {
                     Focus Mode Notifications
                   </h3>
                   <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Get notified when Pomodoro sessions end
+                    Get browser notifications when Pomodoro sessions end
                   </p>
                 </div>
-                <button className="relative inline-flex h-6 w-11 items-center rounded-full bg-gray-200 transition-colors">
-                  <span className="inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-1" />
+                <button 
+                  onClick={() => {
+                    if (Notification.permission === 'default') {
+                      Notification.requestPermission();
+                    }
+                  }}
+                  className="relative inline-flex h-6 w-11 items-center rounded-full bg-indigo-600 transition-colors"
+                >
+                  <span className="inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-6" />
                 </button>
               </div>
 
@@ -318,6 +350,20 @@ const Settings: React.FC = () => {
                   </h3>
                   <p className="text-sm text-gray-600 dark:text-gray-400">
                     Automatically pause music when focus sessions end
+                  </p>
+                </div>
+                <button className="relative inline-flex h-6 w-11 items-center rounded-full bg-indigo-600 transition-colors">
+                  <span className="inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-6" />
+                </button>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-medium text-gray-900 dark:text-white">
+                    Persistent Timer
+                  </h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Keep Pomodoro timer running when switching between pages
                   </p>
                 </div>
                 <button className="relative inline-flex h-6 w-11 items-center rounded-full bg-indigo-600 transition-colors">
@@ -335,6 +381,7 @@ const Settings: React.FC = () => {
             <div className="space-y-2 text-gray-600 dark:text-gray-400">
               <p>Version 1.0.0</p>
               <p>Built with React, TypeScript, and Tailwind CSS</p>
+              <p>Features: PDF/EPUB readers, Audio player, Pomodoro timer, YouTube integration</p>
               <p>© 2025 FocusReads. All rights reserved.</p>
             </div>
           </div>

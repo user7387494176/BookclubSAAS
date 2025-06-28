@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Play, Pause, RotateCcw, Volume2, VolumeX, Clock, Coffee, Upload, FileText, BookOpen, Headphones, X } from 'lucide-react';
 import PDFReader from '../components/Reader/PDFReader';
 import EPUBReader from '../components/Reader/EPUBReader';
 import AudioPlayer from '../components/Audio/AudioPlayer';
+import { usePomodoro } from '../contexts/PomodoroContext';
 
 interface YouTubeMusic {
   id: string;
@@ -10,12 +11,18 @@ interface YouTubeMusic {
 }
 
 const FocusMode: React.FC = () => {
-  const [isActive, setIsActive] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(25 * 60); // 25 minutes in seconds
-  const [isBreak, setIsBreak] = useState(false);
+  const {
+    isActive,
+    timeLeft,
+    currentType,
+    session,
+    startTimer,
+    pauseTimer,
+    resetTimer
+  } = usePomodoro();
+
   const [selectedMusic, setSelectedMusic] = useState<YouTubeMusic | null>(null);
   const [isMuted, setIsMuted] = useState(false);
-  const [session, setSession] = useState(1);
   
   // File handling states
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
@@ -23,82 +30,37 @@ const FocusMode: React.FC = () => {
   const [showReader, setShowReader] = useState(false);
   const [showAudioPlayer, setShowAudioPlayer] = useState(false);
   
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const playerRef = useRef<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const youtubePlayerRef = useRef<any>(null);
 
   const musicOptions: YouTubeMusic[] = [
-    { "id": "eWLVBP3VrO4", "title": "Soulful Amapiano Focus Mix" },
-    { "id": "-vvpsIiUVKY", "title": "Marconi Union – Weightless 10h Version" },
-    { "id": "CDgxzo4dyFI", "title": "Lofi Hip Hop Radio" },
-    { "id": "qYnA9wWFHLI", "title": "Synthwave Focus Station" },
-    { "id": "e8dxG3dTBgM", "title": "New York Café Ambience" },
-    { "id": "J65GxJ2v9Wg", "title": "Deep Focus for Work" },
-    { "id": "vnhmqWqs7kI", "title": "ADHD Relief Focus Music" },
-    { "id": "8sYK7lm3UKg", "title": "Intense Study Music" },
-    { "id": "CwRF8alr6vo", "title": "Classical Focus" },
-    { "id": "6e5958fKwe4", "title": "Brown Noise" },
-    { "id": "a4tNJTZHzPg", "title": "852 Hz Meditation Focus" },
-    { "id": "jfKfPfyJRdk", "title": "Lo-fi Chillhop" }
+    { "id": "jfKfPfyJRdk", "title": "Lofi Hip Hop Radio - Beats to Relax/Study" },
+    { "id": "5qap5aO4i9A", "title": "Deep Focus Music - Ambient Study Music" },
+    { "id": "DWcJFNfaw9c", "title": "Peaceful Piano Music for Studying" },
+    { "id": "lTRiuFIWV54", "title": "Nature Sounds - Forest Rain" },
+    { "id": "UfcAVejslrU", "title": "Cafe Jazz Music - Relaxing Background" },
+    { "id": "MVPTGNGiI-4", "title": "Classical Music for Brain Power" },
+    { "id": "WPni755-Krg", "title": "Ambient Space Music" },
+    { "id": "kHnFDa96vjY", "title": "Brown Noise for Focus" },
+    { "id": "n61ULEU7CO0", "title": "Meditation Music - Zen Garden" },
+    { "id": "1ZYbU82GVz4", "title": "Synthwave Study Session" },
+    { "id": "4xDzrJKXOOY", "title": "Ocean Waves - Natural Sounds" },
+    { "id": "hHW1oY26kxQ", "title": "Library Ambience - Study Atmosphere" }
   ];
 
+  // Load YouTube API
   useEffect(() => {
-    if (isActive && timeLeft > 0) {
-      intervalRef.current = setInterval(() => {
-        setTimeLeft(time => time - 1);
-      }, 1000);
-    } else if (timeLeft === 0) {
-      handleSessionComplete();
-    } else {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
+    if (!window.YT) {
+      const tag = document.createElement('script');
+      tag.src = 'https://www.youtube.com/iframe_api';
+      const firstScriptTag = document.getElementsByTagName('script')[0];
+      firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
+      
+      (window as any).onYouTubeIframeAPIReady = () => {
+        console.log('YouTube API ready');
+      };
     }
-
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
-    };
-  }, [isActive, timeLeft]);
-
-  const handleSessionComplete = () => {
-    setIsActive(false);
-    if (isBreak) {
-      setIsBreak(false);
-      setTimeLeft(25 * 60);
-      setSession(prev => prev + 1);
-    } else {
-      setIsBreak(true);
-      setTimeLeft(session % 4 === 0 ? 15 * 60 : 5 * 60); // Long break every 4 sessions
-    }
-    
-    // Pause music when session ends
-    if (playerRef.current && playerRef.current.pauseVideo) {
-      playerRef.current.pauseVideo();
-    }
-  };
-
-  const toggleTimer = () => {
-    setIsActive(!isActive);
-    
-    if (selectedMusic && playerRef.current) {
-      if (!isActive) {
-        playerRef.current.playVideo();
-      } else {
-        playerRef.current.pauseVideo();
-      }
-    }
-  };
-
-  const resetTimer = () => {
-    setIsActive(false);
-    setTimeLeft(isBreak ? (session % 4 === 0 ? 15 * 60 : 5 * 60) : 25 * 60);
-    
-    if (playerRef.current && playerRef.current.pauseVideo) {
-      playerRef.current.pauseVideo();
-    }
-  };
+  }, []);
 
   const formatTime = (seconds: number) => {
     const minutes = Math.floor(seconds / 60);
@@ -106,24 +68,11 @@ const FocusMode: React.FC = () => {
     return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
-  const progress = isBreak 
-    ? (session % 4 === 0 ? 15 * 60 - timeLeft : 5 * 60 - timeLeft) / (session % 4 === 0 ? 15 * 60 : 5 * 60)
-    : (25 * 60 - timeLeft) / (25 * 60);
-
-  const selectMusic = (music: YouTubeMusic) => {
-    setSelectedMusic(music);
-  };
-
-  const toggleMute = () => {
-    setIsMuted(!isMuted);
-    if (playerRef.current) {
-      if (isMuted) {
-        playerRef.current.unMute();
-      } else {
-        playerRef.current.mute();
-      }
-    }
-  };
+  const progress = currentType === 'focus' 
+    ? (25 * 60 - timeLeft) / (25 * 60)
+    : currentType === 'short-break' 
+      ? (5 * 60 - timeLeft) / (5 * 60)
+      : (15 * 60 - timeLeft) / (15 * 60);
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -134,10 +83,10 @@ const FocusMode: React.FC = () => {
         setFileType('pdf');
       } else if (extension === 'epub') {
         setFileType('epub');
-      } else if (['mp3', 'wav', 'ogg', 'm4a', 'aac'].includes(extension || '')) {
+      } else if (['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac'].includes(extension || '')) {
         setFileType('audio');
       } else {
-        alert('Unsupported file type. Please upload PDF, EPUB, or audio files.');
+        alert('Unsupported file type. Please upload PDF, EPUB, or audio files (MP3, WAV, OGG, M4A, AAC, FLAC).');
         return;
       }
       
@@ -165,22 +114,38 @@ const FocusMode: React.FC = () => {
     setShowAudioPlayer(false);
   };
 
+  const selectMusic = (music: YouTubeMusic) => {
+    setSelectedMusic(music);
+  };
+
   const onPlayerReady = (event: any) => {
-    playerRef.current = event.target;
+    youtubePlayerRef.current = event.target;
     if (isMuted) {
-      playerRef.current.mute();
+      youtubePlayerRef.current.mute();
     }
   };
 
-  useEffect(() => {
-    // Load YouTube API
-    if (!window.YT) {
-      const tag = document.createElement('script');
-      tag.src = 'https://www.youtube.com/iframe_api';
-      const firstScriptTag = document.getElementsByTagName('script')[0];
-      firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
+  const toggleMute = () => {
+    setIsMuted(!isMuted);
+    if (youtubePlayerRef.current) {
+      if (isMuted) {
+        youtubePlayerRef.current.unMute();
+      } else {
+        youtubePlayerRef.current.mute();
+      }
     }
-  }, []);
+  };
+
+  // Sync music with timer
+  useEffect(() => {
+    if (selectedMusic && youtubePlayerRef.current) {
+      if (isActive) {
+        youtubePlayerRef.current.playVideo();
+      } else {
+        youtubePlayerRef.current.pauseVideo();
+      }
+    }
+  }, [isActive, selectedMusic]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-purple-900 py-8">
@@ -206,8 +171,8 @@ const FocusMode: React.FC = () => {
                   <span>Session {session}</span>
                 </div>
                 <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400">
-                  {isBreak ? <Coffee className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
-                  <span>{isBreak ? 'Break Time' : 'Focus Time'}</span>
+                  {currentType === 'focus' ? <Clock className="w-4 h-4" /> : <Coffee className="w-4 h-4" />}
+                  <span>{currentType === 'focus' ? 'Focus Time' : currentType === 'short-break' ? 'Short Break' : 'Long Break'}</span>
                 </div>
               </div>
 
@@ -234,7 +199,7 @@ const FocusMode: React.FC = () => {
                     strokeDasharray={`${2 * Math.PI * 112}`}
                     strokeDashoffset={`${2 * Math.PI * 112 * (1 - progress)}`}
                     className={`transition-all duration-1000 ${
-                      isBreak ? 'text-green-500' : 'text-indigo-600 dark:text-indigo-400'
+                      currentType === 'focus' ? 'theme-primary-text' : 'text-green-500'
                     }`}
                   />
                 </svg>
@@ -244,7 +209,7 @@ const FocusMode: React.FC = () => {
                       {formatTime(timeLeft)}
                     </div>
                     <div className="text-sm text-gray-600 dark:text-gray-400">
-                      {isBreak ? 'Break' : 'Focus'}
+                      {currentType === 'focus' ? 'Focus' : 'Break'}
                     </div>
                   </div>
                 </div>
@@ -253,13 +218,13 @@ const FocusMode: React.FC = () => {
               {/* Controls */}
               <div className="flex items-center justify-center space-x-4">
                 <button
-                  onClick={toggleTimer}
+                  onClick={isActive ? pauseTimer : startTimer}
                   className={`w-16 h-16 rounded-full flex items-center justify-center text-white font-medium transition-all hover:scale-105 ${
                     isActive
                       ? 'bg-red-500 hover:bg-red-600'
-                      : isBreak 
-                        ? 'bg-green-500 hover:bg-green-600'
-                        : 'bg-indigo-600 hover:bg-indigo-700'
+                      : currentType === 'focus'
+                        ? 'theme-primary hover:opacity-90'
+                        : 'bg-green-500 hover:bg-green-600'
                   }`}
                 >
                   {isActive ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6 ml-1" />}
@@ -294,18 +259,18 @@ const FocusMode: React.FC = () => {
                         Upload Your Reading Material
                       </h4>
                       <p className="text-gray-600 dark:text-gray-400 mb-4">
-                        Support for PDF, EPUB, and audio files (MP3, WAV, etc.)
+                        Support for PDF, EPUB, and audio files (MP3, WAV, M4A, etc.)
                       </p>
                       <input
                         ref={fileInputRef}
                         type="file"
-                        accept=".pdf,.epub,.mp3,.wav,.ogg,.m4a,.aac"
+                        accept=".pdf,.epub,.mp3,.wav,.ogg,.m4a,.aac,.flac"
                         onChange={handleFileUpload}
                         className="hidden"
                       />
                       <button
                         onClick={() => fileInputRef.current?.click()}
-                        className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg font-medium transition-colors inline-flex items-center space-x-2"
+                        className="theme-primary hover:opacity-90 text-white px-6 py-3 rounded-lg font-medium transition-colors inline-flex items-center space-x-2"
                       >
                         <Upload className="w-5 h-5" />
                         <span>Choose File</span>
@@ -342,7 +307,7 @@ const FocusMode: React.FC = () => {
                   <div className="flex space-x-3">
                     <button
                       onClick={openReader}
-                      className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-3 rounded-lg font-medium transition-colors inline-flex items-center justify-center space-x-2"
+                      className="flex-1 theme-primary hover:opacity-90 text-white px-4 py-3 rounded-lg font-medium transition-colors inline-flex items-center justify-center space-x-2"
                     >
                       {fileType === 'audio' ? <Headphones className="w-5 h-5" /> : <BookOpen className="w-5 h-5" />}
                       <span>{fileType === 'audio' ? 'Play Audio' : 'Open Reader'}</span>
@@ -393,11 +358,9 @@ const FocusMode: React.FC = () => {
                   <h4 className="font-medium text-gray-900 dark:text-white mb-2">
                     Now Playing: {selectedMusic.title}
                   </h4>
-                  <div className="aspect-video rounded-lg overflow-hidden">
+                  <div className="youtube-container">
                     <iframe
-                      width="100%"
-                      height="100%"
-                      src={`https://www.youtube.com/embed/${selectedMusic.id}?enablejsapi=1&autoplay=0&controls=1&rel=0`}
+                      src={`https://www.youtube.com/embed/${selectedMusic.id}?enablejsapi=1&autoplay=0&controls=1&rel=0&modestbranding=1`}
                       title={selectedMusic.title}
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                       allowFullScreen
@@ -413,7 +376,7 @@ const FocusMode: React.FC = () => {
                 </button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-96 overflow-y-auto">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-96 overflow-y-auto custom-scrollbar">
                 {musicOptions.map((music) => (
                   <button
                     key={music.id}
@@ -421,9 +384,10 @@ const FocusMode: React.FC = () => {
                     className="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-lg transition-colors text-left"
                   >
                     <img
-                      src={`https://img.youtube.com/vi/${music.id}/hqdefault.jpg`}
+                      src={`https://img.youtube.com/vi/${music.id}/mqdefault.jpg`}
                       alt={music.title}
                       className="w-16 h-12 object-cover rounded"
+                      loading="lazy"
                     />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
@@ -445,7 +409,7 @@ const FocusMode: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <div className="text-center">
               <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/30 rounded-full flex items-center justify-center mx-auto mb-3">
-                <Clock className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
+                <Clock className="w-6 h-6 theme-primary-text" />
               </div>
               <h4 className="font-medium text-gray-900 dark:text-white mb-2">25 Minutes Focus</h4>
               <p className="text-sm text-gray-600 dark:text-gray-400">

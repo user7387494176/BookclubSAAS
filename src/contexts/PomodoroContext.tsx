@@ -38,8 +38,10 @@ export const PomodoroProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const startTimeRef = useRef<number | null>(null);
+  const pausedTimeRef = useRef<number>(0);
 
-  // Initialize audio
+  // Initialize audio and load saved state
   useEffect(() => {
     // Create audio context for chime sound
     audioRef.current = new Audio();
@@ -48,12 +50,33 @@ export const PomodoroProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     // Load saved data
     const savedSessions = localStorage.getItem('focusreads-pomodoro-sessions');
     const savedTotalSessions = localStorage.getItem('focusreads-pomodoro-total');
+    const savedState = localStorage.getItem('focusreads-pomodoro-state');
     
     if (savedSessions) {
       setSessions(JSON.parse(savedSessions));
     }
     if (savedTotalSessions) {
       setTotalSessions(parseInt(savedTotalSessions));
+    }
+    
+    // Restore timer state if it was running
+    if (savedState) {
+      const state = JSON.parse(savedState);
+      if (state.isActive && state.startTime) {
+        const elapsed = Math.floor((Date.now() - state.startTime) / 1000);
+        const remaining = state.initialTime - elapsed;
+        
+        if (remaining > 0) {
+          setTimeLeft(remaining);
+          setCurrentType(state.currentType);
+          setSession(state.session);
+          setIsActive(true);
+          startTimeRef.current = state.startTime;
+        } else {
+          // Timer should have completed while away
+          localStorage.removeItem('focusreads-pomodoro-state');
+        }
+      }
     }
   }, []);
 
@@ -63,14 +86,41 @@ export const PomodoroProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     localStorage.setItem('focusreads-pomodoro-total', totalSessions.toString());
   }, [sessions, totalSessions]);
 
-  // Timer logic
+  // Save timer state when active
   useEffect(() => {
-    if (isActive && timeLeft > 0) {
+    if (isActive && startTimeRef.current) {
+      const state = {
+        isActive,
+        startTime: startTimeRef.current,
+        initialTime: currentType === 'focus' ? 25 * 60 : 
+                    currentType === 'short-break' ? 5 * 60 : 15 * 60,
+        currentType,
+        session
+      };
+      localStorage.setItem('focusreads-pomodoro-state', JSON.stringify(state));
+    } else {
+      localStorage.removeItem('focusreads-pomodoro-state');
+    }
+  }, [isActive, currentType, session]);
+
+  // Timer logic with persistent timing
+  useEffect(() => {
+    if (isActive) {
       intervalRef.current = setInterval(() => {
-        setTimeLeft(time => time - 1);
+        if (startTimeRef.current) {
+          const elapsed = Math.floor((Date.now() - startTimeRef.current - pausedTimeRef.current) / 1000);
+          const initialTime = currentType === 'focus' ? 25 * 60 : 
+                             currentType === 'short-break' ? 5 * 60 : 15 * 60;
+          const remaining = initialTime - elapsed;
+          
+          if (remaining <= 0) {
+            setTimeLeft(0);
+            handleSessionComplete();
+          } else {
+            setTimeLeft(remaining);
+          }
+        }
       }, 1000);
-    } else if (timeLeft === 0) {
-      handleSessionComplete();
     } else {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
@@ -82,31 +132,45 @@ export const PomodoroProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         clearInterval(intervalRef.current);
       }
     };
-  }, [isActive, timeLeft]);
+  }, [isActive, currentType]);
 
   const playChime = () => {
     // Create a simple chime sound using Web Audio API
-    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-    const oscillator = audioContext.createOscillator();
-    const gainNode = audioContext.createGain();
-    
-    oscillator.connect(gainNode);
-    gainNode.connect(audioContext.destination);
-    
-    oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
-    oscillator.frequency.setValueAtTime(600, audioContext.currentTime + 0.1);
-    oscillator.frequency.setValueAtTime(800, audioContext.currentTime + 0.2);
-    
-    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
-    
-    oscillator.start(audioContext.currentTime);
-    oscillator.stop(audioContext.currentTime + 0.3);
+    try {
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+      oscillator.frequency.setValueAtTime(600, audioContext.currentTime + 0.1);
+      oscillator.frequency.setValueAtTime(800, audioContext.currentTime + 0.2);
+      
+      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+      
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + 0.3);
+    } catch (error) {
+      console.log('Audio context not available');
+    }
   };
 
   const handleSessionComplete = () => {
     setIsActive(false);
+    startTimeRef.current = null;
+    pausedTimeRef.current = 0;
     playChime();
+    
+    // Show browser notification if permission granted
+    if (Notification.permission === 'granted') {
+      new Notification('FocusReads Timer', {
+        body: `${currentType === 'focus' ? 'Focus session' : 'Break'} completed!`,
+        icon: '/vite.svg'
+      });
+    }
     
     // Complete current session
     if (currentSessionId) {
@@ -145,10 +209,17 @@ export const PomodoroProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     
     setSessions(prev => [...prev, newSession]);
     setCurrentSessionId(newSession.id);
+    startTimeRef.current = Date.now();
+    pausedTimeRef.current = 0;
     setIsActive(true);
   };
 
   const startTimer = () => {
+    // Request notification permission
+    if (Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+    
     if (!isActive && currentType === 'focus') {
       const newSession: PomodoroSession = {
         id: Date.now().toString(),
@@ -159,6 +230,15 @@ export const PomodoroProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       
       setSessions(prev => [...prev, newSession]);
       setCurrentSessionId(newSession.id);
+    }
+    
+    if (!startTimeRef.current) {
+      startTimeRef.current = Date.now();
+      pausedTimeRef.current = 0;
+    } else {
+      // Resuming from pause
+      const pauseDuration = Date.now() - (startTimeRef.current + pausedTimeRef.current);
+      pausedTimeRef.current += pauseDuration;
     }
     
     setIsActive(true);
@@ -172,6 +252,8 @@ export const PomodoroProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const resetTimer = () => {
     setIsActive(false);
+    startTimeRef.current = null;
+    pausedTimeRef.current = 0;
     
     if (currentSessionId) {
       setSessions(prev => prev.filter(s => s.id !== currentSessionId));
@@ -188,6 +270,8 @@ export const PomodoroProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const skipBreak = () => {
     if (currentType !== 'focus') {
       setIsActive(false);
+      startTimeRef.current = null;
+      pausedTimeRef.current = 0;
       
       if (currentSessionId) {
         setSessions(prev => prev.map(s => 

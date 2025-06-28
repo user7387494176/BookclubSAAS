@@ -25,10 +25,10 @@ const PomodoroWidget: React.FC = () => {
 
   const getTypeColor = () => {
     switch (currentType) {
-      case 'focus': return 'bg-indigo-600 border-indigo-500';
+      case 'focus': return 'theme-primary border-indigo-500';
       case 'short-break': return 'bg-green-600 border-green-500';
       case 'long-break': return 'bg-purple-600 border-purple-500';
-      default: return 'bg-indigo-600 border-indigo-500';
+      default: return 'theme-primary border-indigo-500';
     }
   };
 
@@ -45,6 +45,12 @@ const PomodoroWidget: React.FC = () => {
     }
   };
 
+  const getProgress = () => {
+    const totalTime = currentType === 'focus' ? 25 * 60 : 
+                     currentType === 'short-break' ? 5 * 60 : 15 * 60;
+    return ((totalTime - timeLeft) / totalTime) * 100;
+  };
+
   if (isMinimized) {
     return (
       <div className="fixed bottom-4 right-4 z-50">
@@ -53,7 +59,7 @@ const PomodoroWidget: React.FC = () => {
           <div className="flex items-center space-x-2">
             {getTypeIcon()}
             <span className="font-mono text-sm font-medium">{formatTime(timeLeft)}</span>
-            <div className={`w-2 h-2 rounded-full ${isActive ? 'bg-white animate-pulse' : 'bg-white/50'}`} />
+            <div className={`w-2 h-2 rounded-full ${isActive ? 'bg-white pomodoro-pulse' : 'bg-white/50'}`} />
           </div>
         </div>
       </div>
@@ -89,15 +95,10 @@ const PomodoroWidget: React.FC = () => {
           <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
             <div
               className={`h-2 rounded-full transition-all duration-1000 ${
-                currentType === 'focus' ? 'bg-indigo-600' : 
+                currentType === 'focus' ? 'theme-primary' : 
                 currentType === 'short-break' ? 'bg-green-600' : 'bg-purple-600'
               }`}
-              style={{
-                width: `${((currentType === 'focus' ? 25 * 60 : 
-                          currentType === 'short-break' ? 5 * 60 : 15 * 60) - timeLeft) / 
-                         (currentType === 'focus' ? 25 * 60 : 
-                          currentType === 'short-break' ? 5 * 60 : 15 * 60) * 100}%`
-              }}
+              style={{ width: `${getProgress()}%` }}
             />
           </div>
         </div>
@@ -110,7 +111,7 @@ const PomodoroWidget: React.FC = () => {
               isActive
                 ? 'bg-red-500 hover:bg-red-600'
                 : currentType === 'focus'
-                  ? 'bg-indigo-600 hover:bg-indigo-700'
+                  ? 'theme-primary hover:opacity-90'
                   : currentType === 'short-break'
                     ? 'bg-green-600 hover:bg-green-700'
                     : 'bg-purple-600 hover:bg-purple-700'

@@ -14,45 +14,59 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 export const themes = {
   serenityBlue: {
     name: 'Serenity Blue',
-    primary: 'blue',
-    secondary: 'sky',
-    accent: 'indigo'
+    primary: '#3B82F6',
+    secondary: '#0EA5E9',
+    accent: '#6366F1',
+    background: '#F8FAFC',
+    darkBackground: '#0F172A'
   },
   sageGreen: {
     name: 'Sage Green',
-    primary: 'emerald',
-    secondary: 'teal',
-    accent: 'green'
+    primary: '#10B981',
+    secondary: '#14B8A6',
+    accent: '#059669',
+    background: '#F0FDF4',
+    darkBackground: '#064E3B'
   },
   roseDust: {
     name: 'Rose Dust',
-    primary: 'rose',
-    secondary: 'pink',
-    accent: 'red'
+    primary: '#F43F5E',
+    secondary: '#EC4899',
+    accent: '#DC2626',
+    background: '#FFF1F2',
+    darkBackground: '#7F1D1D'
   },
   jetBlack: {
     name: 'Jet Black',
-    primary: 'gray',
-    secondary: 'slate',
-    accent: 'zinc'
+    primary: '#6B7280',
+    secondary: '#64748B',
+    accent: '#374151',
+    background: '#F9FAFB',
+    darkBackground: '#111827'
   },
   creamBeige: {
     name: 'Cream Beige',
-    primary: 'amber',
-    secondary: 'yellow',
-    accent: 'orange'
+    primary: '#F59E0B',
+    secondary: '#EAB308',
+    accent: '#D97706',
+    background: '#FFFBEB',
+    darkBackground: '#78350F'
   },
   lavenderFog: {
     name: 'Lavender Fog',
-    primary: 'purple',
-    secondary: 'violet',
-    accent: 'fuchsia'
+    primary: '#A855F7',
+    secondary: '#8B5CF6',
+    accent: '#C026D3',
+    background: '#FAF5FF',
+    darkBackground: '#581C87'
   },
   autumnBrown: {
     name: 'Autumn Brown',
-    primary: 'orange',
-    secondary: 'amber',
-    accent: 'red'
+    primary: '#EA580C',
+    secondary: '#F59E0B',
+    accent: '#DC2626',
+    background: '#FFF7ED',
+    darkBackground: '#9A3412'
   }
 };
 
@@ -74,11 +88,31 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => {
     document.documentElement.classList.toggle('dark', isDark);
     localStorage.setItem('focusreads-dark', JSON.stringify(isDark));
-  }, [isDark]);
+    
+    // Apply theme colors to CSS variables
+    const theme = themes[currentTheme as keyof typeof themes];
+    if (theme) {
+      const root = document.documentElement;
+      root.style.setProperty('--color-primary', theme.primary);
+      root.style.setProperty('--color-secondary', theme.secondary);
+      root.style.setProperty('--color-accent', theme.accent);
+      root.style.setProperty('--color-background', isDark ? theme.darkBackground : theme.background);
+    }
+  }, [isDark, currentTheme]);
 
   useEffect(() => {
     localStorage.setItem('focusreads-theme', currentTheme);
-  }, [currentTheme]);
+    
+    // Apply theme colors immediately
+    const theme = themes[currentTheme as keyof typeof themes];
+    if (theme) {
+      const root = document.documentElement;
+      root.style.setProperty('--color-primary', theme.primary);
+      root.style.setProperty('--color-secondary', theme.secondary);
+      root.style.setProperty('--color-accent', theme.accent);
+      root.style.setProperty('--color-background', isDark ? theme.darkBackground : theme.background);
+    }
+  }, [currentTheme, isDark]);
 
   useEffect(() => {
     localStorage.setItem('focusreads-background', customBackground);
