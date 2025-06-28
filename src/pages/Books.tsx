@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Filter, BookOpen, Calendar, Tag, Star, Trash2, Edit3 } from 'lucide-react';
+import { Plus, Search, Filter, BookOpen, Calendar, Tag, Star, Trash2, Edit3, Loader, AlertCircle, CheckCircle } from 'lucide-react';
 import { Book } from '../types';
+import { ISBNLookupService, ISBNBookData } from '../services/isbnLookup';
 
 const Books: React.FC = () => {
   const [books, setBooks] = useState<Book[]>([]);
@@ -8,13 +9,17 @@ const Books: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [showAddBook, setShowAddBook] = useState(false);
   const [editingBook, setEditingBook] = useState<Book | null>(null);
+  const [isbnLookupLoading, setIsbnLookupLoading] = useState(false);
+  const [isbnLookupStatus, setIsbnLookupStatus] = useState<'idle' | 'success' | 'error' | 'not-found'>('idle');
   const [newBook, setNewBook] = useState({
     title: '',
     author: '',
     isbn: '',
     cover: '',
     status: 'want-to-read' as 'reading' | 'completed' | 'want-to-read',
-    tags: [] as string[]
+    tags: [] as string[],
+    genre: '',
+    description: ''
   });
 
   useEffect(() => {
@@ -25,6 +30,38 @@ const Books: React.FC = () => {
   const saveBooks = (updatedBooks: Book[]) => {
     setBooks(updatedBooks);
     localStorage.setItem('focusreads-books', JSON.stringify(updatedBooks));
+  };
+
+  const handleISBNLookup = async () => {
+    if (!newBook.isbn.trim()) return;
+    
+    setIsbnLookupLoading(true);
+    setIsbnLookupStatus('idle');
+    
+    try {
+      const bookData = await ISBNLookupService.lookupByISBN(newBook.isbn);
+      
+      if (bookData) {
+        setNewBook(prev => ({
+          ...prev,
+          title: bookData.title,
+          author: bookData.author,
+          cover: bookData.cover,
+          isbn: ISBNLookupService.formatISBN(bookData.isbn),
+          genre: bookData.genre || '',
+          description: bookData.description || '',
+          tags: bookData.tags || []
+        }));
+        setIsbnLookupStatus('success');
+      } else {
+        setIsbnLookupStatus('not-found');
+      }
+    } catch (error) {
+      console.error('ISBN lookup failed:', error);
+      setIsbnLookupStatus('error');
+    } finally {
+      setIsbnLookupLoading(false);
+    }
   };
 
   const handleAddBook = () => {
@@ -38,12 +75,13 @@ const Books: React.FC = () => {
       cover: newBook.cover || `https://ui-avatars.com/api/?name=${encodeURIComponent(newBook.title)}&background=4F46E5&color=fff&size=400`,
       status: newBook.status,
       tags: newBook.tags,
+      genre: newBook.genre,
+      description: newBook.description,
       dateAdded: new Date().toISOString()
     };
 
     saveBooks([...books, book]);
-    setNewBook({ title: '', author: '', isbn: '', cover: '', status: 'want-to-read', tags: [] });
-    setShowAddBook(false);
+    resetForm();
   };
 
   const handleEditBook = (book: Book) => {
@@ -54,7 +92,9 @@ const Books: React.FC = () => {
       isbn: book.isbn || '',
       cover: book.cover || '',
       status: book.status || 'want-to-read',
-      tags: book.tags || []
+      tags: book.tags || [],
+      genre: book.genre || '',
+      description: book.description || ''
     });
     setShowAddBook(true);
   };
@@ -69,7 +109,9 @@ const Books: React.FC = () => {
       isbn: newBook.isbn,
       cover: newBook.cover || editingBook.cover,
       status: newBook.status,
-      tags: newBook.tags
+      tags: newBook.tags,
+      genre: newBook.genre,
+      description: newBook.description
     };
 
     const updatedBooks = books.map(book => 
@@ -77,9 +119,7 @@ const Books: React.FC = () => {
     );
 
     saveBooks(updatedBooks);
-    setEditingBook(null);
-    setNewBook({ title: '', author: '', isbn: '', cover: '', status: 'want-to-read', tags: [] });
-    setShowAddBook(false);
+    resetForm();
   };
 
   const handleDeleteBook = (bookId: string) => {
@@ -110,6 +150,22 @@ const Books: React.FC = () => {
       ...prev,
       tags: prev.tags.filter(tag => tag !== tagToRemove)
     }));
+  };
+
+  const resetForm = () => {
+    setEditingBook(null);
+    setNewBook({ 
+      title: '', 
+      author: '', 
+      isbn: '', 
+      cover: '', 
+      status: 'want-to-read', 
+      tags: [],
+      genre: '',
+      description: ''
+    });
+    setShowAddBook(false);
+    setIsbnLookupStatus('idle');
   };
 
   const getStatusColor = (status: string) => {
@@ -150,21 +206,21 @@ const Books: React.FC = () => {
   const counts = getBookCounts();
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
+    <div className="min-h-screen theme-background py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+            <h1 className="text-3xl font-bold theme-text mb-2">
               My Books
             </h1>
-            <p className="text-gray-600 dark:text-gray-400">
+            <p className="theme-text-secondary">
               Track your reading journey and organize your library
             </p>
           </div>
           <button
             onClick={() => setShowAddBook(true)}
-            className="mt-4 sm:mt-0 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg font-medium transition-colors inline-flex items-center space-x-2"
+            className="mt-4 sm:mt-0 themed-button-primary px-6 py-3 rounded-lg font-medium transition-colors inline-flex items-center space-x-2"
           >
             <Plus className="w-5 h-5" />
             <span>Add Book</span>
@@ -173,46 +229,46 @@ const Books: React.FC = () => {
 
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 text-center">
-            <div className="text-2xl font-bold text-gray-900 dark:text-white mb-1">{counts.total}</div>
-            <div className="text-sm text-gray-600 dark:text-gray-400">Total Books</div>
+          <div className="themed-card rounded-lg shadow-lg p-6 text-center">
+            <div className="text-2xl font-bold theme-text mb-1">{counts.total}</div>
+            <div className="text-sm theme-text-secondary">Total Books</div>
           </div>
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 text-center">
+          <div className="themed-card rounded-lg shadow-lg p-6 text-center">
             <div className="text-2xl font-bold text-blue-600 dark:text-blue-400 mb-1">{counts.reading}</div>
-            <div className="text-sm text-gray-600 dark:text-gray-400">Reading</div>
+            <div className="text-sm theme-text-secondary">Reading</div>
           </div>
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 text-center">
+          <div className="themed-card rounded-lg shadow-lg p-6 text-center">
             <div className="text-2xl font-bold text-green-600 dark:text-green-400 mb-1">{counts.completed}</div>
-            <div className="text-sm text-gray-600 dark:text-gray-400">Completed</div>
+            <div className="text-sm theme-text-secondary">Completed</div>
           </div>
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 text-center">
+          <div className="themed-card rounded-lg shadow-lg p-6 text-center">
             <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-400 mb-1">{counts.wantToRead}</div>
-            <div className="text-sm text-gray-600 dark:text-gray-400">Want to Read</div>
+            <div className="text-sm theme-text-secondary">Want to Read</div>
           </div>
         </div>
 
         {/* Filters */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-8">
+        <div className="themed-card rounded-lg shadow-lg p-6 mb-8">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Search */}
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 theme-text-secondary" />
               <input
                 type="text"
                 placeholder="Search books..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-200 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className="w-full pl-10 pr-4 py-2 themed-input rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               />
             </div>
 
             {/* Status Filter */}
             <div className="relative">
-              <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 theme-text-secondary" />
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-200 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent appearance-none"
+                className="w-full pl-10 pr-4 py-2 themed-input rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent appearance-none"
               >
                 <option value="all">All Status</option>
                 <option value="reading">Currently Reading</option>
@@ -227,7 +283,7 @@ const Books: React.FC = () => {
         {filteredBooks.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {filteredBooks.map(book => (
-              <div key={book.id} className="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
+              <div key={book.id} className="themed-card rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
                 <div className="relative">
                   <img
                     src={book.cover || `https://ui-avatars.com/api/?name=${encodeURIComponent(book.title)}&background=4F46E5&color=fff&size=400`}
@@ -242,10 +298,10 @@ const Books: React.FC = () => {
                 </div>
 
                 <div className="p-4">
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1 line-clamp-2">
+                  <h3 className="text-lg font-semibold theme-text mb-1 line-clamp-2">
                     {book.title}
                   </h3>
-                  <p className="text-gray-600 dark:text-gray-400 mb-3">by {book.author}</p>
+                  <p className="theme-text-secondary mb-3">by {book.author}</p>
 
                   {book.tags && book.tags.length > 0 && (
                     <div className="flex flex-wrap gap-1 mb-3">
@@ -258,7 +314,7 @@ const Books: React.FC = () => {
                         </span>
                       ))}
                       {book.tags.length > 3 && (
-                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                        <span className="text-xs theme-text-secondary">
                           +{book.tags.length - 3} more
                         </span>
                       )}
@@ -270,7 +326,7 @@ const Books: React.FC = () => {
                     <select
                       value={book.status || 'want-to-read'}
                       onChange={(e) => updateBookStatus(book.id, e.target.value as any)}
-                      className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      className="w-full px-3 py-2 text-sm themed-input rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                     >
                       <option value="want-to-read">Want to Read</option>
                       <option value="reading">Currently Reading</option>
@@ -281,7 +337,7 @@ const Books: React.FC = () => {
                     <div className="flex space-x-2">
                       <button
                         onClick={() => handleEditBook(book)}
-                        className="flex-1 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 px-3 py-2 rounded-lg text-sm font-medium transition-colors inline-flex items-center justify-center space-x-1"
+                        className="flex-1 themed-button-secondary px-3 py-2 rounded-lg text-sm font-medium transition-colors inline-flex items-center justify-center space-x-1"
                       >
                         <Edit3 className="w-4 h-4" />
                         <span>Edit</span>
@@ -296,7 +352,7 @@ const Books: React.FC = () => {
                   </div>
 
                   {book.dateAdded && (
-                    <div className="flex items-center text-xs text-gray-500 dark:text-gray-400 mt-3 pt-3 border-t border-gray-200 dark:border-gray-600">
+                    <div className="flex items-center text-xs theme-text-secondary mt-3 pt-3 border-t theme-border">
                       <Calendar className="w-3 h-3 mr-1" />
                       <span>Added {new Date(book.dateAdded).toLocaleDateString()}</span>
                     </div>
@@ -307,16 +363,16 @@ const Books: React.FC = () => {
           </div>
         ) : (
           <div className="text-center py-12">
-            <BookOpen className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+            <BookOpen className="w-16 h-16 theme-text-secondary mx-auto mb-4" />
+            <h3 className="text-lg font-medium theme-text mb-2">
               No books found
             </h3>
-            <p className="text-gray-600 dark:text-gray-400 mb-6">
+            <p className="theme-text-secondary mb-6">
               Start building your personal library by adding some books
             </p>
             <button
               onClick={() => setShowAddBook(true)}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg font-medium transition-colors inline-flex items-center space-x-2"
+              className="themed-button-primary px-6 py-3 rounded-lg font-medium transition-colors inline-flex items-center space-x-2"
             >
               <Plus className="w-5 h-5" />
               <span>Add Your First Book</span>
@@ -327,16 +383,62 @@ const Books: React.FC = () => {
         {/* Add/Edit Book Modal */}
         {showAddBook && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-screen overflow-y-auto">
+            <div className="themed-card rounded-lg shadow-xl max-w-2xl w-full max-h-screen overflow-y-auto">
               <div className="p-6">
-                <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">
+                <h3 className="text-xl font-semibold theme-text mb-6">
                   {editingBook ? 'Edit Book' : 'Add New Book'}
                 </h3>
+
+                {/* ISBN Lookup Section */}
+                <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg theme-border">
+                  <h4 className="font-medium theme-text mb-3">Quick Add with ISBN</h4>
+                  <div className="flex space-x-2 mb-3">
+                    <input
+                      type="text"
+                      value={newBook.isbn}
+                      onChange={(e) => setNewBook(prev => ({ ...prev, isbn: e.target.value }))}
+                      placeholder="Enter ISBN (10 or 13 digits)"
+                      className="flex-1 px-3 py-2 themed-input rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    />
+                    <button
+                      onClick={handleISBNLookup}
+                      disabled={!newBook.isbn.trim() || isbnLookupLoading}
+                      className="themed-button-primary px-4 py-2 rounded-lg font-medium transition-colors inline-flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isbnLookupLoading ? (
+                        <Loader className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Search className="w-4 h-4" />
+                      )}
+                      <span>Lookup</span>
+                    </button>
+                  </div>
+                  
+                  {/* Lookup Status */}
+                  {isbnLookupStatus === 'success' && (
+                    <div className="flex items-center space-x-2 text-green-600 dark:text-green-400 text-sm">
+                      <CheckCircle className="w-4 h-4" />
+                      <span>Book information found and populated!</span>
+                    </div>
+                  )}
+                  {isbnLookupStatus === 'not-found' && (
+                    <div className="flex items-center space-x-2 text-yellow-600 dark:text-yellow-400 text-sm">
+                      <AlertCircle className="w-4 h-4" />
+                      <span>Book not found in database. Please fill in details manually.</span>
+                    </div>
+                  )}
+                  {isbnLookupStatus === 'error' && (
+                    <div className="flex items-center space-x-2 text-red-600 dark:text-red-400 text-sm">
+                      <AlertCircle className="w-4 h-4" />
+                      <span>Error looking up book. Please try again or fill in manually.</span>
+                    </div>
+                  )}
+                </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                   {/* Title */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    <label className="block text-sm font-medium theme-text mb-2">
                       Title *
                     </label>
                     <input
@@ -344,14 +446,14 @@ const Books: React.FC = () => {
                       value={newBook.title}
                       onChange={(e) => setNewBook(prev => ({ ...prev, title: e.target.value }))}
                       placeholder="Book title"
-                      className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      className="w-full px-3 py-2 themed-input rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                       required
                     />
                   </div>
 
                   {/* Author */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    <label className="block text-sm font-medium theme-text mb-2">
                       Author *
                     </label>
                     <input
@@ -359,36 +461,36 @@ const Books: React.FC = () => {
                       value={newBook.author}
                       onChange={(e) => setNewBook(prev => ({ ...prev, author: e.target.value }))}
                       placeholder="Author name"
-                      className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      className="w-full px-3 py-2 themed-input rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                       required
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                  {/* ISBN */}
+                  {/* Genre */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      ISBN
+                    <label className="block text-sm font-medium theme-text mb-2">
+                      Genre
                     </label>
                     <input
                       type="text"
-                      value={newBook.isbn}
-                      onChange={(e) => setNewBook(prev => ({ ...prev, isbn: e.target.value }))}
-                      placeholder="ISBN"
-                      className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      value={newBook.genre}
+                      onChange={(e) => setNewBook(prev => ({ ...prev, genre: e.target.value }))}
+                      placeholder="Fiction, Non-fiction, etc."
+                      className="w-full px-3 py-2 themed-input rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                     />
                   </div>
 
                   {/* Status */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    <label className="block text-sm font-medium theme-text mb-2">
                       Status
                     </label>
                     <select
                       value={newBook.status}
                       onChange={(e) => setNewBook(prev => ({ ...prev, status: e.target.value as any }))}
-                      className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      className="w-full px-3 py-2 themed-input rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                     >
                       <option value="want-to-read">Want to Read</option>
                       <option value="reading">Currently Reading</option>
@@ -399,7 +501,7 @@ const Books: React.FC = () => {
 
                 {/* Cover URL */}
                 <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label className="block text-sm font-medium theme-text mb-2">
                     Cover Image URL
                   </label>
                   <input
@@ -407,16 +509,30 @@ const Books: React.FC = () => {
                     value={newBook.cover}
                     onChange={(e) => setNewBook(prev => ({ ...prev, cover: e.target.value }))}
                     placeholder="https://example.com/book-cover.jpg"
-                    className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    className="w-full px-3 py-2 themed-input rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                   />
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  <p className="text-xs theme-text-secondary mt-1">
                     Leave empty to use a generated cover
                   </p>
                 </div>
 
+                {/* Description */}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium theme-text mb-2">
+                    Description
+                  </label>
+                  <textarea
+                    value={newBook.description}
+                    onChange={(e) => setNewBook(prev => ({ ...prev, description: e.target.value }))}
+                    placeholder="Book description..."
+                    rows={3}
+                    className="w-full px-3 py-2 themed-input rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
+                  />
+                </div>
+
                 {/* Tags */}
                 <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label className="block text-sm font-medium theme-text mb-2">
                     Tags
                   </label>
                   <div className="flex flex-wrap gap-2 mb-3">
@@ -445,26 +561,22 @@ const Books: React.FC = () => {
                         e.currentTarget.value = '';
                       }
                     }}
-                    className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    className="w-full px-3 py-2 themed-input rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                   />
                 </div>
 
                 {/* Actions */}
                 <div className="flex justify-end space-x-4">
                   <button
-                    onClick={() => {
-                      setShowAddBook(false);
-                      setEditingBook(null);
-                      setNewBook({ title: '', author: '', isbn: '', cover: '', status: 'want-to-read', tags: [] });
-                    }}
-                    className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+                    onClick={resetForm}
+                    className="px-4 py-2 theme-text-secondary hover:theme-text transition-colors"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={editingBook ? handleUpdateBook : handleAddBook}
                     disabled={!newBook.title.trim() || !newBook.author.trim()}
-                    className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white px-6 py-2 rounded-lg font-medium transition-colors"
+                    className="themed-button-primary px-6 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {editingBook ? 'Update Book' : 'Add Book'}
                   </button>

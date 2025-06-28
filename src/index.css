@@ -7,8 +7,13 @@
   --color-secondary: #0EA5E9;
   --color-accent: #6366F1;
   --color-background: #F8FAFC;
+  --color-surface: #FFFFFF;
+  --color-text: #1F2937;
+  --color-text-secondary: #6B7280;
+  --color-border: #E5E7EB;
 }
 
+/* Theme utility classes */
 .theme-primary {
   background-color: var(--color-primary);
 }
@@ -37,9 +42,69 @@
   background-color: var(--color-background);
 }
 
+.theme-surface {
+  background-color: var(--color-surface);
+}
+
+.theme-text {
+  color: var(--color-text);
+}
+
+.theme-text-secondary {
+  color: var(--color-text-secondary);
+}
+
+.theme-border {
+  border-color: var(--color-border);
+}
+
+/* Enhanced theme-aware components */
+.themed-card {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+}
+
+.themed-input {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+}
+
+.themed-input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(var(--color-primary), 0.1);
+}
+
+.themed-button-primary {
+  background-color: var(--color-primary);
+  color: white;
+}
+
+.themed-button-primary:hover {
+  opacity: 0.9;
+}
+
+.themed-button-secondary {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+}
+
+.themed-button-secondary:hover {
+  background-color: var(--color-background);
+}
+
 /* Dark mode transitions */
 * {
-  transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out, color 0.2s ease-in-out;
+  transition: background-color 0.3s ease-in-out, border-color 0.3s ease-in-out, color 0.3s ease-in-out;
+}
+
+/* Body theming */
+body {
+  background-color: var(--color-background);
+  color: var(--color-text);
+  transition: background-color 0.3s ease-in-out, color 0.3s ease-in-out;
 }
 
 /* PDF.js styles */
@@ -61,21 +126,24 @@
   max-width: 800px;
   margin: 0 auto;
   padding: 2rem;
+  color: var(--color-text);
 }
 
 .epub-content h1, .epub-content h2, .epub-content h3 {
   margin-top: 2rem;
   margin-bottom: 1rem;
+  color: var(--color-text);
 }
 
 .epub-content p {
   margin-bottom: 1rem;
   text-align: justify;
+  color: var(--color-text);
 }
 
 /* Audio player styles */
 .audio-player {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
   border-radius: 1rem;
   padding: 1.5rem;
   color: white;
@@ -138,36 +206,23 @@
   }
 }
 
-/* Custom scrollbar */
+/* Custom scrollbar with theming */
 .custom-scrollbar::-webkit-scrollbar {
   width: 6px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: var(--color-background);
   border-radius: 3px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
+  background: var(--color-border);
   border-radius: 3px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #a8a8a8;
-}
-
-/* Dark mode scrollbar */
-.dark .custom-scrollbar::-webkit-scrollbar-track {
-  background: #374151;
-}
-
-.dark .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #6b7280;
-}
-
-.dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #9ca3af;
+  background: var(--color-text-secondary);
 }
 
 /* Enhanced button hover effects */
@@ -179,7 +234,7 @@ button:active {
   transform: translateY(0);
 }
 
-/* Smooth focus rings */
+/* Smooth focus rings with theme colors */
 button:focus-visible,
 input:focus-visible,
 select:focus-visible,
@@ -210,23 +265,62 @@ textarea:focus-visible {
   overflow: hidden;
 }
 
-/* Glass morphism effects */
+/* Glass morphism effects with theming */
 .glass {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(var(--color-surface), 0.1);
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid var(--color-border);
 }
 
-.dark .glass {
-  background: rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-/* Enhanced shadows */
+/* Enhanced shadows with theme awareness */
 .shadow-soft {
   box-shadow: 0 2px 15px -3px rgba(0, 0, 0, 0.07), 0 10px 20px -2px rgba(0, 0, 0, 0.04);
 }
 
 .dark .shadow-soft {
   box-shadow: 0 2px 15px -3px rgba(0, 0, 0, 0.3), 0 10px 20px -2px rgba(0, 0, 0, 0.2);
+}
+
+/* Loading spinner with theme colors */
+.loading-spinner {
+  border-color: var(--color-border);
+  border-top-color: var(--color-primary);
+}
+
+/* Theme-aware form elements */
+input, select, textarea {
+  background-color: var(--color-surface);
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(var(--color-primary), 0.1);
+}
+
+/* Theme-aware cards and surfaces */
+.card {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+}
+
+/* Navigation theming */
+nav {
+  background-color: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+/* Modal theming */
+.modal {
+  background-color: var(--color-surface);
+  color: var(--color-text);
+}
+
+/* Dropdown theming */
+.dropdown {
+  background-color: var(--color-surface);
+  border-color: var(--color-border);
+  color: var(--color-text);
 }

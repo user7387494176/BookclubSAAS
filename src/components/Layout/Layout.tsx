@@ -8,11 +8,16 @@ const Layout: React.FC = () => {
 
   return (
     <div 
-      className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors"
-      style={customBackground ? { backgroundImage: `url(${customBackground})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
+      className="min-h-screen theme-background transition-colors"
+      style={customBackground ? { 
+        backgroundImage: `url(${customBackground})`, 
+        backgroundSize: 'cover', 
+        backgroundPosition: 'center',
+        backgroundAttachment: 'fixed'
+      } : {}}
     >
       <Header />
-      <main className={customBackground ? 'bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm' : ''}>
+      <main className={customBackground ? 'bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm min-h-screen' : ''}>
         <Outlet />
       </main>
     </div>
