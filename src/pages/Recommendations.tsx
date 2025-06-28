@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ExternalLink, ShoppingCart, Plus, Star, BookOpen, Check, RefreshCw } from 'lucide-react';
+import { ExternalLink, ShoppingCart, Plus, Star, BookOpen, Check, RefreshCw, Settings, Target } from 'lucide-react';
 import { AmazonBooksService, AmazonBook } from '../services/amazonBooks';
 
 const Recommendations: React.FC = () => {
@@ -9,6 +9,7 @@ const Recommendations: React.FC = () => {
   const [selectedGenre, setSelectedGenre] = useState<string>('all');
   const [readBooks, setReadBooks] = useState<Set<string>>(new Set());
   const [refreshingBook, setRefreshingBook] = useState<string | null>(null);
+  const [showSurveyPrompt, setShowSurveyPrompt] = useState(false);
 
   const genres = ['all', 'fiction', 'non-fiction', 'mystery', 'science-fiction'];
 
@@ -21,6 +22,12 @@ const Recommendations: React.FC = () => {
     const myBooks = JSON.parse(localStorage.getItem('focusreads-books') || '[]');
     const readBookIds = new Set(myBooks.filter((book: any) => book.status === 'completed').map((book: any) => book.id));
     setReadBooks(readBookIds);
+
+    // Check if user has taken survey
+    const preferences = localStorage.getItem('focusreads-preferences');
+    if (!preferences) {
+      setShowSurveyPrompt(true);
+    }
   }, []);
 
   const loadBooks = async () => {
@@ -111,6 +118,40 @@ const Recommendations: React.FC = () => {
           </p>
         </div>
 
+        {/* Survey Prompt */}
+        {showSurveyPrompt && (
+          <div className="mb-8 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 border border-indigo-200 dark:border-indigo-800 rounded-lg p-6">
+            <div className="flex items-start space-x-4">
+              <div className="flex-shrink-0">
+                <Target className="w-8 h-8 text-indigo-600 dark:text-indigo-400" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                  Get Personalized Recommendations
+                </h3>
+                <p className="text-gray-600 dark:text-gray-400 mb-4">
+                  Take our quick survey to receive book recommendations tailored specifically to your reading preferences, goals, and interests.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <Link
+                    to="/survey"
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg font-medium transition-colors inline-flex items-center justify-center space-x-2"
+                  >
+                    <Settings className="w-4 h-4" />
+                    <span>Take Survey (2 minutes)</span>
+                  </Link>
+                  <button
+                    onClick={() => setShowSurveyPrompt(false)}
+                    className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 px-6 py-2 rounded-lg font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                  >
+                    Maybe Later
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Genre Filter */}
         <div className="mb-8">
           <div className="flex flex-wrap gap-2">
@@ -133,7 +174,7 @@ const Recommendations: React.FC = () => {
         {/* Books Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {books.map((book) => (
-            <div key={book.id} className="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
+            <div key={book.id} className="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow relative">
               {refreshingBook === book.id && (
                 <div className="absolute inset-0 bg-white/80 dark:bg-gray-800/80 flex items-center justify-center z-10 rounded-lg">
                   <div className="text-center">

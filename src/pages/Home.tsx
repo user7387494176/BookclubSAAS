@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Book, Target, Music, PenTool, BookOpen, Star, ArrowRight } from 'lucide-react';
+import { Book, Target, Music, PenTool, BookOpen, Star, ArrowRight, SkipForward } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import GoogleSignIn from '../components/Auth/GoogleSignIn';
 
@@ -86,10 +86,17 @@ const Home: React.FC = () => {
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link
                 to="/survey"
-                className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3 rounded-lg font-medium transition-colors inline-flex items-center space-x-2"
+                className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3 rounded-lg font-medium transition-colors inline-flex items-center justify-center space-x-2"
               >
-                <span>Get Started</span>
+                <span>Get Personalized Recommendations</span>
                 <ArrowRight className="w-5 h-5" />
+              </Link>
+              <Link
+                to="/recommendations"
+                className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white px-8 py-3 rounded-lg font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors inline-flex items-center justify-center space-x-2"
+              >
+                <SkipForward className="w-5 h-5" />
+                <span>Skip to Browse Books</span>
               </Link>
               <Link
                 to="/focus"
@@ -147,7 +154,7 @@ const Home: React.FC = () => {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
               to="/survey"
-              className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3 rounded-lg font-medium transition-colors inline-flex items-center space-x-2"
+              className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3 rounded-lg font-medium transition-colors inline-flex items-center justify-center space-x-2"
             >
               <span>Take the Survey</span>
               <ArrowRight className="w-5 h-5" />

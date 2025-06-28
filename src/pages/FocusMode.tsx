@@ -31,7 +31,6 @@ const FocusMode: React.FC = () => {
   const [showAudioPlayer, setShowAudioPlayer] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const youtubePlayerRef = useRef<any>(null);
 
   const musicOptions: YouTubeMusic[] = [
     { "id": "jfKfPfyJRdk", "title": "Lofi Hip Hop Radio - Beats to Relax/Study" },
@@ -47,20 +46,6 @@ const FocusMode: React.FC = () => {
     { "id": "4xDzrJKXOOY", "title": "Ocean Waves - Natural Sounds" },
     { "id": "hHW1oY26kxQ", "title": "Library Ambience - Study Atmosphere" }
   ];
-
-  // Load YouTube API
-  useEffect(() => {
-    if (!window.YT) {
-      const tag = document.createElement('script');
-      tag.src = 'https://www.youtube.com/iframe_api';
-      const firstScriptTag = document.getElementsByTagName('script')[0];
-      firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
-      
-      (window as any).onYouTubeIframeAPIReady = () => {
-        console.log('YouTube API ready');
-      };
-    }
-  }, []);
 
   const formatTime = (seconds: number) => {
     const minutes = Math.floor(seconds / 60);
@@ -117,35 +102,6 @@ const FocusMode: React.FC = () => {
   const selectMusic = (music: YouTubeMusic) => {
     setSelectedMusic(music);
   };
-
-  const onPlayerReady = (event: any) => {
-    youtubePlayerRef.current = event.target;
-    if (isMuted) {
-      youtubePlayerRef.current.mute();
-    }
-  };
-
-  const toggleMute = () => {
-    setIsMuted(!isMuted);
-    if (youtubePlayerRef.current) {
-      if (isMuted) {
-        youtubePlayerRef.current.unMute();
-      } else {
-        youtubePlayerRef.current.mute();
-      }
-    }
-  };
-
-  // Sync music with timer
-  useEffect(() => {
-    if (selectedMusic && youtubePlayerRef.current) {
-      if (isActive) {
-        youtubePlayerRef.current.playVideo();
-      } else {
-        youtubePlayerRef.current.pauseVideo();
-      }
-    }
-  }, [isActive, selectedMusic]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-purple-900 py-8">
@@ -340,7 +296,7 @@ const FocusMode: React.FC = () => {
               </h3>
               {selectedMusic && (
                 <button
-                  onClick={toggleMute}
+                  onClick={() => setIsMuted(!isMuted)}
                   className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                 >
                   {isMuted ? (
@@ -360,7 +316,7 @@ const FocusMode: React.FC = () => {
                   </h4>
                   <div className="youtube-container">
                     <iframe
-                      src={`https://www.youtube.com/embed/${selectedMusic.id}?enablejsapi=1&autoplay=0&controls=1&rel=0&modestbranding=1`}
+                      src={`https://www.youtube.com/embed/${selectedMusic.id}?enablejsapi=1&autoplay=0&controls=1&rel=0&modestbranding=1${isMuted ? '&mute=1' : ''}`}
                       title={selectedMusic.title}
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                       allowFullScreen

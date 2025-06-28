@@ -71,22 +71,37 @@ export const themes = {
 };
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [isDark, setIsDark] = useState(false);
+  const [isDark, setIsDark] = useState(() => {
+    // Check system preference first
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('focusreads-dark');
+      if (saved !== null) {
+        return JSON.parse(saved);
+      }
+      return window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+    return false;
+  });
+  
   const [currentTheme, setCurrentTheme] = useState('serenityBlue');
   const [customBackground, setCustomBackground] = useState('');
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('focusreads-theme');
-    const savedDark = localStorage.getItem('focusreads-dark');
     const savedBackground = localStorage.getItem('focusreads-background');
 
     if (savedTheme) setCurrentTheme(savedTheme);
-    if (savedDark) setIsDark(JSON.parse(savedDark));
     if (savedBackground) setCustomBackground(savedBackground);
   }, []);
 
   useEffect(() => {
-    document.documentElement.classList.toggle('dark', isDark);
+    // Apply dark mode class to document
+    if (isDark) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    
     localStorage.setItem('focusreads-dark', JSON.stringify(isDark));
     
     // Apply theme colors to CSS variables
@@ -117,6 +132,20 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => {
     localStorage.setItem('focusreads-background', customBackground);
   }, [customBackground]);
+
+  // Listen for system theme changes
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleChange = (e: MediaQueryListEvent) => {
+      const saved = localStorage.getItem('focusreads-dark');
+      if (saved === null) {
+        setIsDark(e.matches);
+      }
+    };
+
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, []);
 
   const toggleDark = () => setIsDark(!isDark);
 
