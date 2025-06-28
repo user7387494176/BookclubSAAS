@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Filter, BookOpen, Calendar, Tag, Star, Trash2, Edit3, Loader, AlertCircle, CheckCircle } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Plus, Search, Filter, BookOpen, Calendar, Tag, Star, Trash2, Edit3, Loader, AlertCircle, CheckCircle, Download, Upload, Settings, FileText } from 'lucide-react';
 import { Book } from '../types';
 import { ISBNLookupService, ISBNBookData } from '../services/isbnLookup';
+import { PDFExportService } from '../services/pdfExport';
 
 const Books: React.FC = () => {
   const [books, setBooks] = useState<Book[]>([]);
@@ -21,6 +23,12 @@ const Books: React.FC = () => {
     genre: '',
     description: ''
   });
+
+  // Check if user has completed survey
+  const hasCompletedSurvey = () => {
+    const preferences = localStorage.getItem('focusreads-preferences');
+    return preferences && JSON.parse(preferences).genres && JSON.parse(preferences).genres.length > 0;
+  };
 
   useEffect(() => {
     const savedBooks = JSON.parse(localStorage.getItem('focusreads-books') || '[]');
@@ -168,6 +176,45 @@ const Books: React.FC = () => {
     setIsbnLookupStatus('idle');
   };
 
+  const exportToPDF = async () => {
+    await PDFExportService.exportToPDF();
+  };
+
+  const exportToJSON = async () => {
+    await PDFExportService.exportToJSON();
+  };
+
+  const importData = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = JSON.parse(e.target?.result as string);
+        
+        // Import all data
+        if (data.books) localStorage.setItem('focusreads-books', JSON.stringify(data.books));
+        if (data.notes) localStorage.setItem('focusreads-notes', JSON.stringify(data.notes));
+        if (data.preferences) localStorage.setItem('focusreads-preferences', JSON.stringify(data.preferences));
+        if (data.pomodoroSessions) localStorage.setItem('focusreads-pomodoro-sessions', JSON.stringify(data.pomodoroSessions));
+        if (data.pomodoroTotal) localStorage.setItem('focusreads-pomodoro-total', data.pomodoroTotal);
+        if (data.settings) {
+          if (data.settings.theme) localStorage.setItem('focusreads-theme', data.settings.theme);
+          if (data.settings.dark) localStorage.setItem('focusreads-dark', data.settings.dark);
+          if (data.settings.background) localStorage.setItem('focusreads-background', data.settings.background);
+        }
+
+        alert('Data imported successfully! Please refresh the page to see your imported data.');
+        window.location.reload();
+      } catch (error) {
+        alert('Error importing data. Please check the file format.');
+        console.error('Import error:', error);
+      }
+    };
+    reader.readAsText(file);
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'reading': return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300';
@@ -218,14 +265,91 @@ const Books: React.FC = () => {
               Track your reading journey and organize your library
             </p>
           </div>
-          <button
-            onClick={() => setShowAddBook(true)}
-            className="mt-4 sm:mt-0 themed-button-primary px-6 py-3 rounded-lg font-medium transition-colors inline-flex items-center space-x-2"
-          >
-            <Plus className="w-5 h-5" />
-            <span>Add Book</span>
-          </button>
+          
+          <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-3 sm:space-y-0 sm:space-x-3 mt-4 sm:mt-0">
+            {/* Update Recommendations Button */}
+            {hasCompletedSurvey() && (
+              <Link
+                to="/update-survey"
+                className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-medium transition-colors inline-flex items-center space-x-2"
+              >
+                <Settings className="w-4 h-4" />
+                <span>Update My Recommendations</span>
+              </Link>
+            )}
+            
+            {/* Export/Import Controls */}
+            <div className="flex items-center space-x-2">
+              <div className="relative group">
+                <button className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors inline-flex items-center space-x-2">
+                  <Download className="w-4 h-4" />
+                  <span>Export</span>
+                </button>
+                <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-600 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10">
+                  <button
+                    onClick={exportToPDF}
+                    className="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-lg transition-colors inline-flex items-center space-x-2"
+                  >
+                    <FileText className="w-4 h-4" />
+                    <span>Export as PDF</span>
+                  </button>
+                  <button
+                    onClick={exportToJSON}
+                    className="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-b-lg transition-colors inline-flex items-center space-x-2"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span>Export as JSON</span>
+                  </button>
+                </div>
+              </div>
+              
+              <label className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors inline-flex items-center space-x-2 cursor-pointer">
+                <Upload className="w-4 h-4" />
+                <span>Import Data</span>
+                <input
+                  type="file"
+                  accept=".json"
+                  onChange={importData}
+                  className="hidden"
+                />
+              </label>
+            </div>
+            
+            <button
+              onClick={() => setShowAddBook(true)}
+              className="themed-button-primary px-6 py-3 rounded-lg font-medium transition-colors inline-flex items-center space-x-2"
+            >
+              <Plus className="w-5 h-5" />
+              <span>Add Book</span>
+            </button>
+          </div>
         </div>
+
+        {/* Survey Prompt */}
+        {!hasCompletedSurvey() && (
+          <div className="mb-8 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 border border-indigo-200 dark:border-indigo-800 rounded-lg p-6">
+            <div className="flex items-start space-x-4">
+              <div className="flex-shrink-0">
+                <Settings className="w-8 h-8 text-indigo-600 dark:text-indigo-400" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                  Get Personalized Book Recommendations
+                </h3>
+                <p className="text-gray-600 dark:text-gray-400 mb-4">
+                  Complete our quick survey to receive book recommendations tailored to your reading preferences, mood, and goals.
+                </p>
+                <Link
+                  to="/survey"
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg font-medium transition-colors inline-flex items-center space-x-2"
+                >
+                  <Settings className="w-4 h-4" />
+                  <span>Take Survey (2 minutes)</span>
+                </Link>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">

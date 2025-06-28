@@ -7,6 +7,7 @@ import Layout from './components/Layout/Layout';
 import PomodoroWidget from './components/Pomodoro/PomodoroWidget';
 import Home from './pages/Home';
 import Survey from './pages/Survey';
+import UpdateSurvey from './pages/UpdateSurvey';
 import Recommendations from './pages/Recommendations';
 import BookSample from './pages/BookSample';
 import FocusMode from './pages/FocusMode';
@@ -24,6 +25,7 @@ function App() {
               <Route path="/" element={<Layout />}>
                 <Route index element={<Home />} />
                 <Route path="survey" element={<Survey />} />
+                <Route path="update-survey" element={<UpdateSurvey />} />
                 <Route path="recommendations" element={<Recommendations />} />
                 <Route path="book-sample/:id" element={<BookSample />} />
                 <Route path="focus" element={<FocusMode />} />
