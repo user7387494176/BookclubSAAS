@@ -1,4 +1,4 @@
-// Enhanced ISBN Lookup Service with Amazon integration
+// Enhanced ISBN Lookup Service with dynamic generation
 import { AmazonLookupService, AmazonProductData } from './amazonLookup';
 
 export interface ISBNBookData {
@@ -44,7 +44,7 @@ export class ISBNLookupService {
   }
 
   static async lookupByISBN(isbn: string): Promise<ISBNBookData | null> {
-    // First try Amazon lookup for verified data
+    // Use Amazon lookup for dynamic generation
     const amazonData = await AmazonLookupService.lookupByISBN(isbn);
     
     if (amazonData) {
@@ -63,29 +63,11 @@ export class ISBNLookupService {
       };
     }
     
-    // Fallback to basic ISBN validation and search URL generation
-    const normalizedISBN = this.normalizeISBN(isbn);
-    
-    if (this.validateISBN(normalizedISBN)) {
-      return {
-        title: `Book with ISBN ${isbn}`,
-        author: 'Unknown Author',
-        cover: `https://ui-avatars.com/api/?name=Book+${normalizedISBN.slice(-4)}&background=4F46E5&color=fff&size=400`,
-        isbn: normalizedISBN,
-        publishDate: new Date().getFullYear().toString(),
-        genre: 'Unknown',
-        description: `This book was looked up by ISBN ${isbn}. Complete metadata not available in our database.`,
-        tags: ['Unknown Genre'],
-        amazonUrl: AmazonLookupService.generateAmazonUrl(normalizedISBN, 'isbn'),
-        price: 'Price not available'
-      };
-    }
-    
     return null;
   }
 
   static async searchByTitle(title: string): Promise<ISBNBookData[]> {
-    // Use Amazon search first
+    // Use Amazon search for dynamic generation
     const amazonResults = await AmazonLookupService.searchByTitle(title);
     
     return amazonResults.map(amazonData => ({

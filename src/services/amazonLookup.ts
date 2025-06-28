@@ -1,4 +1,4 @@
-// Amazon Product Lookup Service with ASIN/ISBN verification
+// Amazon Product Lookup Service with dynamic generation
 export interface AmazonProductData {
   asin: string;
   isbn: string;
@@ -15,170 +15,89 @@ export interface AmazonProductData {
   reviewCount?: number;
 }
 
-// Enhanced Amazon product database with verified ASINs and ISBNs
-const amazonProductDatabase: Record<string, AmazonProductData> = {
-  // Fiction
-  'B07CKVW499': {
-    asin: 'B07CKVW499',
-    isbn: '9780735219090',
-    title: 'Where the Crawdads Sing',
-    author: 'Delia Owens',
-    cover: 'https://m.media-amazon.com/images/I/81O55JbkOTL._SY522_.jpg',
-    publishDate: '2018-08-14',
-    genre: 'Fiction',
-    description: 'For years, rumors of the "Marsh Girl" have haunted Barkley Cove, a quiet town on the North Carolina coast. So in late 1969, when handsome Chase Andrews is found dead, the locals immediately suspect Kya Clark, the so-called Marsh Girl.',
-    tags: ['Fiction', 'Mystery', 'Coming of Age', 'Nature'],
-    amazonUrl: 'https://www.amazon.com/dp/B07CKVW499',
-    price: '$15.99',
-    rating: 4.5,
-    reviewCount: 156789
-  },
-  'B01N8PW5LJ': {
-    asin: 'B01N8PW5LJ',
-    isbn: '9780735211292',
-    title: 'Atomic Habits',
-    author: 'James Clear',
-    cover: 'https://m.media-amazon.com/images/I/81wgcld4wxL._SY522_.jpg',
-    publishDate: '2018-10-16',
-    genre: 'Self-Help',
-    description: 'No matter your goals, Atomic Habits offers a proven framework for improving--every day. James Clear, one of the world\'s leading experts on habit formation, reveals practical strategies that will teach you exactly how to form good habits, break bad ones, and master the tiny behaviors that lead to remarkable results.',
-    tags: ['Self-Help', 'Productivity', 'Habits', 'Personal Development'],
-    amazonUrl: 'https://www.amazon.com/dp/B01N8PW5LJ',
-    price: '$18.99',
-    rating: 4.8,
-    reviewCount: 234567
-  },
-  'B01LZQSB68': {
-    asin: 'B01LZQSB68',
-    isbn: '9781501161933',
-    title: 'The Seven Husbands of Evelyn Hugo',
-    author: 'Taylor Jenkins Reid',
-    cover: 'https://m.media-amazon.com/images/I/71FTb9X6wsL._SY522_.jpg',
-    publishDate: '2017-06-13',
-    genre: 'Fiction',
-    description: 'Aging and reclusive Hollywood movie icon Evelyn Hugo is finally ready to tell the truth about her glamorous and scandalous life. But when she chooses unknown magazine reporter Monique Grant for the job, no one is more astounded than Monique herself.',
-    tags: ['Fiction', 'Historical Fiction', 'Romance', 'Hollywood'],
-    amazonUrl: 'https://www.amazon.com/dp/B01LZQSB68',
-    price: '$16.99',
-    rating: 4.6,
-    reviewCount: 89234
-  },
-  'B084FW9KJJ': {
-    asin: 'B084FW9KJJ',
-    isbn: '9780525559474',
-    title: 'The Midnight Library',
-    author: 'Matt Haig',
-    cover: 'https://m.media-amazon.com/images/I/71DKbV-LBSL._SY522_.jpg',
-    publishDate: '2020-08-13',
-    genre: 'Fiction',
-    description: 'Between life and death there is a library, and within that library, the shelves go on forever. Every book provides a chance to try another life you could have lived. To see how things would be if you had made other choices...',
-    tags: ['Fiction', 'Philosophy', 'Fantasy', 'Life Choices'],
-    amazonUrl: 'https://www.amazon.com/dp/B084FW9KJJ',
-    price: '$14.99',
-    rating: 4.3,
-    reviewCount: 67432
-  },
-  'B075DQVZD3': {
-    asin: 'B075DQVZD3',
-    isbn: '9780399590504',
-    title: 'Educated',
-    author: 'Tara Westover',
-    cover: 'https://m.media-amazon.com/images/I/81WojUxbbFL._SY522_.jpg',
-    publishDate: '2018-02-20',
-    genre: 'Memoir',
-    description: 'Born to survivalists in the mountains of Idaho, Tara Westover was seventeen the first time she set foot in a classroom. Her family was so isolated from mainstream society that there was no one to ensure the children received an education, and no one to intervene when one of Tara\'s older brothers became violent.',
-    tags: ['Memoir', 'Education', 'Family', 'Survival'],
-    amazonUrl: 'https://www.amazon.com/dp/B075DQVZD3',
-    price: '$17.99',
-    rating: 4.7,
-    reviewCount: 178923
-  },
-  'B00ICN066A': {
-    asin: 'B00ICN066A',
-    isbn: '9780062316097',
-    title: 'Sapiens: A Brief History of Humankind',
-    author: 'Yuval Noah Harari',
-    cover: 'https://m.media-amazon.com/images/I/713jIoMO3UL._SY522_.jpg',
-    publishDate: '2015-02-10',
-    genre: 'History',
-    description: 'From a renowned historian comes a groundbreaking narrative of humanity\'s creation and evolution—a #1 international bestseller—that explores the ways in which biology and history have defined us and enhanced our understanding of what it means to be "human."',
-    tags: ['History', 'Anthropology', 'Evolution', 'Science'],
-    amazonUrl: 'https://www.amazon.com/dp/B00ICN066A',
-    price: '$19.99',
-    rating: 4.5,
-    reviewCount: 98765
-  },
-  'B07B3JBQZC': {
-    asin: 'B07B3JBQZC',
-    isbn: '9781524763138',
-    title: 'Becoming',
-    author: 'Michelle Obama',
-    cover: 'https://m.media-amazon.com/images/I/81h2gWPTYJL._SY522_.jpg',
-    publishDate: '2018-11-13',
-    genre: 'Biography',
-    description: 'In a life filled with meaning and accomplishment, Michelle Obama has emerged as one of the most iconic and compelling women of our era. As First Lady of the United States of America—the first African American to serve in that role—she helped create the most welcoming and inclusive White House in history.',
-    tags: ['Biography', 'Politics', 'Inspiration', 'Leadership'],
-    amazonUrl: 'https://www.amazon.com/dp/B07B3JBQZC',
-    price: '$20.99',
-    rating: 4.9,
-    reviewCount: 145632
-  },
-  'B08FHBV4ZX': {
-    asin: 'B08FHBV4ZX',
-    isbn: '9780593135204',
-    title: 'Project Hail Mary',
-    author: 'Andy Weir',
-    cover: 'https://m.media-amazon.com/images/I/91vS2L5gKcL._SY522_.jpg',
-    publishDate: '2021-05-04',
-    genre: 'Science Fiction',
-    description: 'Ryland Grace is the sole survivor on a desperate, last-chance mission—and if he fails, humanity and the earth itself will perish. Except that right now, he doesn\'t know that. He can\'t even remember his own name, let alone the nature of his assignment or how to complete it.',
-    tags: ['Science Fiction', 'Space', 'Adventure', 'Humor'],
-    amazonUrl: 'https://www.amazon.com/dp/B08FHBV4ZX',
-    price: '$17.99',
-    rating: 4.7,
-    reviewCount: 98765
-  },
-  'B00EMXBDMA': {
-    asin: 'B00EMXBDMA',
-    isbn: '9780553418026',
-    title: 'The Martian',
-    author: 'Andy Weir',
-    cover: 'https://m.media-amazon.com/images/I/81L2rU8C4PL._SY522_.jpg',
-    publishDate: '2014-02-11',
-    genre: 'Science Fiction',
-    description: 'Six days ago, astronaut Mark Watney became one of the first people to walk on Mars. Now, he\'s sure he\'ll be the first person to die there. After a dust storm nearly kills him and forces his crew to evacuate while thinking him dead, Mark finds himself stranded and completely alone with no way to even signal Earth that he\'s alive.',
-    tags: ['Science Fiction', 'Space', 'Survival', 'Humor'],
-    amazonUrl: 'https://www.amazon.com/dp/B00EMXBDMA',
-    price: '$15.99',
-    rating: 4.6,
-    reviewCount: 187654
-  },
-  'B00B7NPRY8': {
-    asin: 'B00B7NPRY8',
-    isbn: '9780441172719',
-    title: 'Dune',
-    author: 'Frank Herbert',
-    cover: 'https://m.media-amazon.com/images/I/81ym2lBKYGL._SY522_.jpg',
-    publishDate: '1965-08-01',
-    genre: 'Science Fiction',
-    description: 'Set on the desert planet Arrakis, Dune is the story of the boy Paul Atreides, heir to a noble family tasked with ruling an inhospitable world where the only thing of value is the "spice" melange, a drug capable of extending life and enhancing consciousness.',
-    tags: ['Science Fiction', 'Epic Fantasy', 'Politics', 'Desert'],
-    amazonUrl: 'https://www.amazon.com/dp/B00B7NPRY8',
-    price: '$18.99',
-    rating: 4.5,
-    reviewCount: 234567
+// Dynamic generation functions
+function getRandomElement<T>(array: T[]): T {
+  return array[Math.floor(Math.random() * array.length)];
+}
+
+function generateISBN(): string {
+  const prefix = '978';
+  const group = '0';
+  const publisher = Math.floor(Math.random() * 999).toString().padStart(3, '0');
+  const title = Math.floor(Math.random() * 99999).toString().padStart(5, '0');
+  
+  // Calculate check digit
+  const isbn12 = prefix + group + publisher + title;
+  let sum = 0;
+  for (let i = 0; i < 12; i++) {
+    const digit = parseInt(isbn12[i]);
+    sum += (i % 2 === 0) ? digit : digit * 3;
   }
-};
+  const checkDigit = (10 - (sum % 10)) % 10;
+  
+  return isbn12 + checkDigit;
+}
 
-// Create reverse lookup maps for ISBN and title searches
-const isbnToAsinMap: Record<string, string> = {};
-const titleToAsinMap: Record<string, string> = {};
+function generateASIN(): string {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let result = 'B';
+  for (let i = 0; i < 9; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+}
 
-// Populate lookup maps
-Object.values(amazonProductDatabase).forEach(product => {
-  isbnToAsinMap[product.isbn] = product.asin;
-  titleToAsinMap[product.title.toLowerCase()] = product.asin;
-});
+const authorNames = [
+  'Elena Rodriguez', 'Marcus Chen', 'Isabella Thompson', 'Alexander Kim', 'Sophia Williams',
+  'Gabriel Martinez', 'Aria Patel', 'Sebastian Brown', 'Luna Davis', 'Adrian Wilson',
+  'Celeste Johnson', 'Dante Garcia', 'Aurora Lee', 'Phoenix Taylor', 'Sage Anderson'
+];
+
+const bookTitles = [
+  'The Silent Garden', 'Whispers of Tomorrow', 'The Last Symphony', 'Shadows in Venice',
+  'The Golden Path', 'Midnight in Paris', 'The Art of Being', 'Beyond the Horizon',
+  'The Secret Library', 'Dancing with Destiny', 'The Infinite Journey', 'Echoes of Time',
+  'The Forgotten Dream', 'Starlight Serenade', 'The Hidden Truth', 'Moonrise Over Tokyo'
+];
+
+const descriptions = [
+  'A captivating tale that weaves together love, loss, and redemption in unexpected ways.',
+  'An emotionally powerful story that explores the depths of human connection and resilience.',
+  'A beautifully crafted narrative that takes readers on an unforgettable journey of discovery.',
+  'A compelling exploration of family, identity, and the choices that define us.',
+  'An intricate story of secrets, betrayal, and the power of forgiveness.'
+];
+
+const genres = ['Fiction', 'Non-Fiction', 'Mystery', 'Science Fiction', 'Biography'];
+
+function generateProduct(): AmazonProductData {
+  const asin = generateASIN();
+  const isbn = generateISBN();
+  const title = getRandomElement(bookTitles);
+  const author = getRandomElement(authorNames);
+  const genre = getRandomElement(genres);
+  const description = getRandomElement(descriptions);
+  const publishDate = `${2020 + Math.floor(Math.random() * 5)}-${String(Math.floor(Math.random() * 12) + 1).padStart(2, '0')}-${String(Math.floor(Math.random() * 28) + 1).padStart(2, '0')}`;
+  const rating = Math.round((3.5 + Math.random() * 1.5) * 10) / 10;
+  const reviewCount = Math.floor(Math.random() * 50000) + 1000;
+  const price = `$${(9.99 + Math.random() * 20).toFixed(2)}`;
+
+  return {
+    asin,
+    isbn,
+    title,
+    author,
+    cover: `https://ui-avatars.com/api/?name=${encodeURIComponent(title.substring(0, 20))}&background=4F46E5&color=fff&size=400&bold=true`,
+    publishDate,
+    genre,
+    description,
+    tags: [genre, 'Popular', 'Recommended'],
+    amazonUrl: `https://www.amazon.com/dp/${asin}`,
+    price,
+    rating,
+    reviewCount
+  };
+}
 
 export class AmazonLookupService {
   private static normalizeISBN(isbn: string): string {
@@ -214,27 +133,10 @@ export class AmazonLookupService {
     
     const normalizedISBN = this.normalizeISBN(isbn);
     
-    // Find ASIN by ISBN
-    const asin = isbnToAsinMap[normalizedISBN];
-    if (asin && amazonProductDatabase[asin]) {
-      return amazonProductDatabase[asin];
-    }
-    
-    // If not found in our database, try to generate a valid Amazon search URL
-    if (normalizedISBN.length === 13 && normalizedISBN.startsWith('978')) {
-      return {
-        asin: `ISBN-${normalizedISBN}`,
-        isbn: normalizedISBN,
-        title: `Book with ISBN ${isbn}`,
-        author: 'Unknown Author',
-        cover: `https://ui-avatars.com/api/?name=Book+${normalizedISBN.slice(-4)}&background=4F46E5&color=fff&size=400`,
-        publishDate: new Date().getFullYear().toString(),
-        genre: 'Unknown',
-        description: `This book was looked up by ISBN ${isbn}. Complete metadata not available in our database.`,
-        tags: ['Unknown Genre'],
-        amazonUrl: `https://www.amazon.com/s?k=${normalizedISBN}&i=stripbooks&ref=nb_sb_noss`,
-        price: 'Price not available'
-      };
+    if (this.validateISBN(normalizedISBN)) {
+      const product = generateProduct();
+      product.isbn = normalizedISBN;
+      return product;
     }
     
     return null;
@@ -243,25 +145,29 @@ export class AmazonLookupService {
   static async lookupByASIN(asin: string): Promise<AmazonProductData | null> {
     await new Promise(resolve => setTimeout(resolve, 600));
     
-    const product = amazonProductDatabase[asin];
-    if (product) {
+    if (this.validateASIN(asin)) {
+      const product = generateProduct();
+      product.asin = asin;
+      product.amazonUrl = `https://www.amazon.com/dp/${asin}`;
       return product;
     }
     
-    // If ASIN not found, return null (invalid ASIN)
     return null;
   }
 
   static async searchByTitle(title: string): Promise<AmazonProductData[]> {
     await new Promise(resolve => setTimeout(resolve, 600));
     
-    const searchTerm = title.toLowerCase();
-    const results = Object.values(amazonProductDatabase).filter(product =>
-      product.title.toLowerCase().includes(searchTerm) ||
-      product.author.toLowerCase().includes(searchTerm)
-    );
+    const results: AmazonProductData[] = [];
     
-    return results.slice(0, 5); // Return top 5 results
+    for (let i = 0; i < 5; i++) {
+      const product = generateProduct();
+      // Modify title to be related to search
+      product.title = `${title} ${product.title}`;
+      results.push(product);
+    }
+    
+    return results;
   }
 
   static validateISBN(isbn: string): boolean {
