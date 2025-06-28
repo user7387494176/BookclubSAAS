@@ -14,6 +14,10 @@ export interface Book {
   status?: 'reading' | 'completed' | 'want-to-read';
   tags?: string[];
   notes?: Note[];
+  rating?: number;
+  reviewCount?: number;
+  price?: string;
+  sampleText?: string;
 }
 
 export interface Note {
@@ -49,4 +53,12 @@ export interface Theme {
 export interface YouTubeMusic {
   id: string;
   title: string;
+}
+
+export interface PomodoroSession {
+  id: string;
+  startTime: string;
+  endTime?: string;
+  type: 'focus' | 'short-break' | 'long-break';
+  completed: boolean;
 }

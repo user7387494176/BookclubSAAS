@@ -1,117 +1,87 @@
 import React, { useState, useEffect } from 'react';
-import { ExternalLink, ShoppingCart, Plus, Star, BookOpen } from 'lucide-react';
-import { Book } from '../types';
+import { Link } from 'react-router-dom';
+import { ExternalLink, ShoppingCart, Plus, Star, BookOpen, Check, RefreshCw } from 'lucide-react';
+import { AmazonBooksService, AmazonBook } from '../services/amazonBooks';
 
 const Recommendations: React.FC = () => {
-  const [books, setBooks] = useState<Book[]>([]);
+  const [books, setBooks] = useState<AmazonBook[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedGenre, setSelectedGenre] = useState<string>('all');
+  const [readBooks, setReadBooks] = useState<Set<string>>(new Set());
+  const [refreshingBook, setRefreshingBook] = useState<string | null>(null);
 
-  const genres = ['all', 'fiction', 'non-fiction', 'mystery', 'romance', 'science-fiction', 'fantasy', 'biography'];
-
-  // Sample books data - in a real app, this would come from an API
-  const sampleBooks: Book[] = [
-    {
-      id: '1',
-      title: 'The Seven Husbands of Evelyn Hugo',
-      author: 'Taylor Jenkins Reid',
-      cover: 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=300&h=400&fit=crop',
-      isbn: '9781501161933',
-      publishDate: '2017',
-      genre: 'fiction',
-      audience: 'Adult',
-      description: 'A reclusive Hollywood icon finally tells her story to a young journalist, revealing the truth about her seven marriages and the price of fame.',
-      amazonUrl: 'https://amazon.com/dp/1501161933',
-      sampleUrl: 'https://example.com/sample'
-    },
-    {
-      id: '2',
-      title: 'Atomic Habits',
-      author: 'James Clear',
-      cover: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=400&fit=crop',
-      isbn: '9780735211292',
-      publishDate: '2018',
-      genre: 'non-fiction',
-      audience: 'Adult',
-      description: 'A comprehensive guide to building good habits and breaking bad ones, backed by scientific research and real-world examples.',
-      amazonUrl: 'https://amazon.com/dp/0735211292',
-      sampleUrl: 'https://example.com/sample'
-    },
-    {
-      id: '3',
-      title: 'The Thursday Murder Club',
-      author: 'Richard Osman',
-      cover: 'https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=300&h=400&fit=crop',
-      isbn: '9780735210642',
-      publishDate: '2020',
-      genre: 'mystery',
-      audience: 'Adult',
-      description: 'Four unlikely friends meet weekly to investigate cold cases, but soon find themselves in the middle of their first live case.',
-      amazonUrl: 'https://amazon.com/dp/0735210642',
-      sampleUrl: 'https://example.com/sample'
-    },
-    {
-      id: '4',
-      title: 'Project Hail Mary',
-      author: 'Andy Weir',
-      cover: 'https://images.unsplash.com/photo-1446776877081-d282a0f896e2?w=300&h=400&fit=crop',
-      isbn: '9780593135204',
-      publishDate: '2021',
-      genre: 'science-fiction',
-      audience: 'Adult',
-      description: 'A lone astronaut must save humanity from extinction, but first he has to figure out what happened to his crew and himself.',
-      amazonUrl: 'https://amazon.com/dp/0593135204',
-      sampleUrl: 'https://example.com/sample'
-    },
-    {
-      id: '5',
-      title: 'The Invisible Life of Addie LaRue',
-      author: 'V.E. Schwab',
-      cover: 'https://images.unsplash.com/photo-1526243741027-444d633d7365?w=300&h=400&fit=crop',
-      isbn: '9780765387561',
-      publishDate: '2020',
-      genre: 'fantasy',
-      audience: 'Young Adult',
-      description: 'A young woman makes a Faustian bargain to live forever but is cursed to be forgotten by everyone she meets.',
-      amazonUrl: 'https://amazon.com/dp/0765387565',
-      sampleUrl: 'https://example.com/sample'
-    },
-    {
-      id: '6',
-      title: 'Educated',
-      author: 'Tara Westover',
-      cover: 'https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=300&h=400&fit=crop',
-      isbn: '9780399590504',
-      publishDate: '2018',
-      genre: 'biography',
-      audience: 'Adult',
-      description: 'A memoir about a woman who grows up in a survivalist family in Idaho and eventually earns a PhD from Cambridge.',
-      amazonUrl: 'https://amazon.com/dp/0399590501',
-      sampleUrl: 'https://example.com/sample'
-    }
-  ];
+  const genres = ['all', 'fiction', 'non-fiction', 'mystery', 'science-fiction'];
 
   useEffect(() => {
-    // Simulate API loading
-    const timer = setTimeout(() => {
-      setBooks(sampleBooks);
-      setLoading(false);
-    }, 1000);
+    loadBooks();
+  }, [selectedGenre]);
 
-    return () => clearTimeout(timer);
+  useEffect(() => {
+    // Load read books from localStorage
+    const myBooks = JSON.parse(localStorage.getItem('focusreads-books') || '[]');
+    const readBookIds = new Set(myBooks.filter((book: any) => book.status === 'completed').map((book: any) => book.id));
+    setReadBooks(readBookIds);
   }, []);
 
-  const filteredBooks = selectedGenre === 'all' 
-    ? books 
-    : books.filter(book => book.genre === selectedGenre);
+  const loadBooks = async () => {
+    setLoading(true);
+    try {
+      const booksData = await AmazonBooksService.getBooksByGenre(selectedGenre, 8);
+      setBooks(booksData);
+    } catch (error) {
+      console.error('Failed to load books:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const addToMyBooks = (book: Book) => {
+  const addToMyBooks = (book: AmazonBook) => {
     const existingBooks = JSON.parse(localStorage.getItem('focusreads-books') || '[]');
-    const isAlreadyAdded = existingBooks.some((b: Book) => b.id === book.id);
+    const isAlreadyAdded = existingBooks.some((b: any) => b.id === book.id);
     
     if (!isAlreadyAdded) {
       const bookWithStatus = { ...book, status: 'want-to-read', dateAdded: new Date().toISOString() };
       localStorage.setItem('focusreads-books', JSON.stringify([...existingBooks, bookWithStatus]));
+    }
+  };
+
+  const markAsRead = async (bookId: string) => {
+    // Add to my books as completed
+    const book = books.find(b => b.id === bookId);
+    if (book) {
+      const existingBooks = JSON.parse(localStorage.getItem('focusreads-books') || '[]');
+      const bookWithStatus = { ...book, status: 'completed', dateAdded: new Date().toISOString() };
+      
+      // Remove if already exists and add with new status
+      const filteredBooks = existingBooks.filter((b: any) => b.id !== bookId);
+      localStorage.setItem('focusreads-books', JSON.stringify([...filteredBooks, bookWithStatus]));
+      
+      // Update local state
+      setReadBooks(prev => new Set([...prev, bookId]));
+      
+      // Generate new recommendation for this genre
+      await generateNewRecommendation(bookId, book.genre || 'fiction');
+    }
+  };
+
+  const generateNewRecommendation = async (excludeId: string, genre: string) => {
+    setRefreshingBook(excludeId);
+    
+    try {
+      // Get all currently displayed book IDs to exclude
+      const currentBookIds = books.map(b => b.id);
+      const newBooks = await AmazonBooksService.getRandomBooksByGenre(genre, currentBookIds);
+      
+      if (newBooks.length > 0) {
+        // Replace the read book with a new recommendation
+        setBooks(prev => prev.map(book => 
+          book.id === excludeId ? newBooks[0] : book
+        ));
+      }
+    } catch (error) {
+      console.error('Failed to generate new recommendation:', error);
+    } finally {
+      setRefreshingBook(null);
     }
   };
 
@@ -161,26 +131,41 @@ const Recommendations: React.FC = () => {
         </div>
 
         {/* Books Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredBooks.map((book) => (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {books.map((book) => (
             <div key={book.id} className="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
+              {refreshingBook === book.id && (
+                <div className="absolute inset-0 bg-white/80 dark:bg-gray-800/80 flex items-center justify-center z-10 rounded-lg">
+                  <div className="text-center">
+                    <RefreshCw className="w-8 h-8 text-indigo-600 animate-spin mx-auto mb-2" />
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Finding new recommendation...</p>
+                  </div>
+                </div>
+              )}
+              
               <div className="relative">
                 <img
                   src={book.cover}
                   alt={book.title}
                   className="w-full h-64 object-cover"
                 />
-                <div className="absolute top-4 right-4">
+                <div className="absolute top-4 right-4 flex flex-col space-y-2">
                   <div className="flex items-center space-x-1 bg-yellow-400 text-yellow-900 px-2 py-1 rounded-full text-xs font-medium">
                     <Star className="w-3 h-3 fill-current" />
                     <span>Recommended</span>
                   </div>
+                  {book.rating && (
+                    <div className="flex items-center space-x-1 bg-white/90 dark:bg-gray-800/90 text-gray-900 dark:text-white px-2 py-1 rounded-full text-xs font-medium">
+                      <Star className="w-3 h-3 text-yellow-400 fill-current" />
+                      <span>{book.rating}</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
               <div className="p-6">
                 <div className="mb-4">
-                  <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                  <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2 line-clamp-2">
                     {book.title}
                   </h3>
                   <p className="text-gray-600 dark:text-gray-400 mb-1">by {book.author}</p>
@@ -198,6 +183,22 @@ const Recommendations: React.FC = () => {
                 </p>
 
                 <div className="space-y-3">
+                  {/* Already Read Button */}
+                  <div className="flex justify-center">
+                    <button
+                      onClick={() => markAsRead(book.id)}
+                      disabled={readBooks.has(book.id) || refreshingBook === book.id}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors inline-flex items-center space-x-2 ${
+                        readBooks.has(book.id)
+                          ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 cursor-not-allowed'
+                          : 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-900/50'
+                      }`}
+                    >
+                      <Check className="w-4 h-4" />
+                      <span>{readBooks.has(book.id) ? 'Already Read' : 'Mark as Read'}</span>
+                    </button>
+                  </div>
+
                   <div className="flex space-x-2">
                     <a
                       href={book.amazonUrl}
@@ -206,7 +207,8 @@ const Recommendations: React.FC = () => {
                       className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition-colors inline-flex items-center justify-center space-x-2"
                     >
                       <ShoppingCart className="w-4 h-4" />
-                      <span>Buy on Amazon</span>
+                      <span>Buy</span>
+                      {book.price && <span className="text-xs">({book.price})</span>}
                     </a>
                     <button
                       onClick={() => addToMyBooks(book)}
@@ -218,19 +220,22 @@ const Recommendations: React.FC = () => {
                   </div>
                   
                   <div className="flex space-x-2">
-                    <a
-                      href={book.sampleUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    <Link
+                      to={`/book-sample/${book.id}`}
                       className="flex-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 px-4 py-2 rounded-lg font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors inline-flex items-center justify-center space-x-2"
                     >
                       <BookOpen className="w-4 h-4" />
                       <span>Read Sample</span>
-                    </a>
-                    <button className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 px-4 py-2 rounded-lg font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors inline-flex items-center space-x-2">
+                    </Link>
+                    <a
+                      href={book.amazonUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 px-4 py-2 rounded-lg font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors inline-flex items-center space-x-2"
+                    >
                       <ExternalLink className="w-4 h-4" />
                       <span>Details</span>
-                    </button>
+                    </a>
                   </div>
                 </div>
               </div>
@@ -238,7 +243,7 @@ const Recommendations: React.FC = () => {
           ))}
         </div>
 
-        {filteredBooks.length === 0 && (
+        {books.length === 0 && (
           <div className="text-center py-12">
             <BookOpen className="w-12 h-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
