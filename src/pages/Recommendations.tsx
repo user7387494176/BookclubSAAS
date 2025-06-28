@@ -1,7 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ExternalLink, ShoppingCart, Plus, Star, BookOpen, Check, RefreshCw, Settings, Target } from 'lucide-react';
+import { ExternalLink, ShoppingCart, Heart, Star, BookOpen, Check, RefreshCw, Settings, Target, Download, Upload } from 'lucide-react';
 import { AmazonBooksService, AmazonBook } from '../services/amazonBooks';
+
+interface UserPreferences {
+  genres: string[];
+  mood: string;
+  readingGoals: string[];
+  readingTime: string;
+  preferredLength: string;
+}
 
 const Recommendations: React.FC = () => {
   const [books, setBooks] = useState<AmazonBook[]>([]);
@@ -9,11 +17,11 @@ const Recommendations: React.FC = () => {
   const [selectedGenre, setSelectedGenre] = useState<string>('all');
   const [readBooks, setReadBooks] = useState<Set<string>>(new Set());
   const [refreshingBook, setRefreshingBook] = useState<string | null>(null);
-  const [showSurveyPrompt, setShowSurveyPrompt] = useState(false);
-
-  const genres = ['all', 'fiction', 'non-fiction', 'mystery', 'science-fiction'];
+  const [userPreferences, setUserPreferences] = useState<UserPreferences | null>(null);
+  const [availableGenres, setAvailableGenres] = useState<string[]>([]);
 
   useEffect(() => {
+    loadUserPreferences();
     loadBooks();
   }, [selectedGenre]);
 
@@ -22,18 +30,87 @@ const Recommendations: React.FC = () => {
     const myBooks = JSON.parse(localStorage.getItem('focusreads-books') || '[]');
     const readBookIds = new Set(myBooks.filter((book: any) => book.status === 'completed').map((book: any) => book.id));
     setReadBooks(readBookIds);
-
-    // Check if user has taken survey
-    const preferences = localStorage.getItem('focusreads-preferences');
-    if (!preferences) {
-      setShowSurveyPrompt(true);
-    }
   }, []);
+
+  const loadUserPreferences = () => {
+    const preferences = localStorage.getItem('focusreads-preferences');
+    if (preferences) {
+      const parsedPreferences: UserPreferences = JSON.parse(preferences);
+      setUserPreferences(parsedPreferences);
+      
+      // Convert survey genres to our system genres
+      const genreMapping: Record<string, string> = {
+        'Fiction': 'fiction',
+        'Non-Fiction': 'non-fiction',
+        'Mystery': 'mystery',
+        'Science Fiction': 'science-fiction',
+        'Fantasy': 'fantasy',
+        'Romance': 'romance',
+        'Biography': 'biography',
+        'History': 'history',
+        'Self-Help': 'self-help',
+        'Business': 'business',
+        'Philosophy': 'philosophy',
+        'Psychology': 'psychology',
+        'Poetry': 'poetry',
+        'Drama': 'drama',
+        'Adventure': 'adventure'
+      };
+
+      const mappedGenres = parsedPreferences.genres
+        .map(genre => genreMapping[genre] || genre.toLowerCase().replace(/\s+/g, '-'))
+        .filter(Boolean);
+
+      setAvailableGenres(['all', ...mappedGenres]);
+    } else {
+      // Default genres when no survey completed
+      setAvailableGenres(['all', 'fiction', 'non-fiction', 'mystery', 'science-fiction']);
+    }
+  };
 
   const loadBooks = async () => {
     setLoading(true);
     try {
-      const booksData = await AmazonBooksService.getBooksByGenre(selectedGenre, 8);
+      let booksData: AmazonBook[];
+      
+      if (userPreferences && selectedGenre === 'all') {
+        // Load books from user's preferred genres
+        const genreMapping: Record<string, string> = {
+          'Fiction': 'fiction',
+          'Non-Fiction': 'non-fiction',
+          'Mystery': 'mystery',
+          'Science Fiction': 'science-fiction',
+          'Fantasy': 'fantasy',
+          'Romance': 'romance',
+          'Biography': 'biography',
+          'History': 'history',
+          'Self-Help': 'self-help',
+          'Business': 'business',
+          'Philosophy': 'philosophy',
+          'Psychology': 'psychology',
+          'Poetry': 'poetry',
+          'Drama': 'drama',
+          'Adventure': 'adventure'
+        };
+
+        const preferredGenres = userPreferences.genres
+          .map(genre => genreMapping[genre] || genre.toLowerCase().replace(/\s+/g, '-'))
+          .filter(Boolean);
+
+        // Get books from each preferred genre
+        const allBooks: AmazonBook[] = [];
+        const booksPerGenre = Math.ceil(8 / preferredGenres.length);
+        
+        for (const genre of preferredGenres) {
+          const genreBooks = await AmazonBooksService.getBooksByGenre(genre, booksPerGenre);
+          allBooks.push(...genreBooks);
+        }
+        
+        booksData = allBooks.slice(0, 8);
+      } else {
+        booksData = await AmazonBooksService.getBooksByGenre(selectedGenre, 8);
+      }
+      
       setBooks(booksData);
     } catch (error) {
       console.error('Failed to load books:', error);
@@ -53,20 +130,16 @@ const Recommendations: React.FC = () => {
   };
 
   const markAsRead = async (bookId: string) => {
-    // Add to my books as completed
     const book = books.find(b => b.id === bookId);
     if (book) {
       const existingBooks = JSON.parse(localStorage.getItem('focusreads-books') || '[]');
       const bookWithStatus = { ...book, status: 'completed', dateAdded: new Date().toISOString() };
       
-      // Remove if already exists and add with new status
       const filteredBooks = existingBooks.filter((b: any) => b.id !== bookId);
       localStorage.setItem('focusreads-books', JSON.stringify([...filteredBooks, bookWithStatus]));
       
-      // Update local state
       setReadBooks(prev => new Set([...prev, bookId]));
       
-      // Generate new recommendation for this genre
       await generateNewRecommendation(bookId, book.genre || 'fiction');
     }
   };
@@ -75,12 +148,10 @@ const Recommendations: React.FC = () => {
     setRefreshingBook(excludeId);
     
     try {
-      // Get all currently displayed book IDs to exclude
       const currentBookIds = books.map(b => b.id);
-      const newBooks = await AmazonBooksService.getRandomBooksByGenre(genre, currentBookIds);
+      const newBooks = await AmazonBooksService.getRandomBooksByGenre(genre.toLowerCase(), currentBookIds);
       
       if (newBooks.length > 0) {
-        // Replace the read book with a new recommendation
         setBooks(prev => prev.map(book => 
           book.id === excludeId ? newBooks[0] : book
         ));
@@ -90,6 +161,85 @@ const Recommendations: React.FC = () => {
     } finally {
       setRefreshingBook(null);
     }
+  };
+
+  const exportData = () => {
+    const data = {
+      books: JSON.parse(localStorage.getItem('focusreads-books') || '[]'),
+      notes: JSON.parse(localStorage.getItem('focusreads-notes') || '[]'),
+      preferences: JSON.parse(localStorage.getItem('focusreads-preferences') || '{}'),
+      pomodoroSessions: JSON.parse(localStorage.getItem('focusreads-pomodoro-sessions') || '[]'),
+      pomodoroTotal: localStorage.getItem('focusreads-pomodoro-total') || '0',
+      settings: {
+        theme: localStorage.getItem('focusreads-theme') || 'serenityBlue',
+        dark: localStorage.getItem('focusreads-dark') || 'false',
+        background: localStorage.getItem('focusreads-background') || ''
+      },
+      exportDate: new Date().toISOString()
+    };
+
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `focusreads-data-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const importData = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = JSON.parse(e.target?.result as string);
+        
+        // Import all data
+        if (data.books) localStorage.setItem('focusreads-books', JSON.stringify(data.books));
+        if (data.notes) localStorage.setItem('focusreads-notes', JSON.stringify(data.notes));
+        if (data.preferences) localStorage.setItem('focusreads-preferences', JSON.stringify(data.preferences));
+        if (data.pomodoroSessions) localStorage.setItem('focusreads-pomodoro-sessions', JSON.stringify(data.pomodoroSessions));
+        if (data.pomodoroTotal) localStorage.setItem('focusreads-pomodoro-total', data.pomodoroTotal);
+        if (data.settings) {
+          if (data.settings.theme) localStorage.setItem('focusreads-theme', data.settings.theme);
+          if (data.settings.dark) localStorage.setItem('focusreads-dark', data.settings.dark);
+          if (data.settings.background) localStorage.setItem('focusreads-background', data.settings.background);
+        }
+
+        alert('Data imported successfully! Please refresh the page to see your imported data.');
+        window.location.reload();
+      } catch (error) {
+        alert('Error importing data. Please check the file format.');
+        console.error('Import error:', error);
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const getGenreDisplayName = (genre: string) => {
+    const displayNames: Record<string, string> = {
+      'all': 'All Genres',
+      'fiction': 'Fiction',
+      'non-fiction': 'Non-Fiction',
+      'mystery': 'Mystery',
+      'science-fiction': 'Science Fiction',
+      'fantasy': 'Fantasy',
+      'romance': 'Romance',
+      'biography': 'Biography',
+      'history': 'History',
+      'self-help': 'Self-Help',
+      'business': 'Business',
+      'philosophy': 'Philosophy',
+      'psychology': 'Psychology',
+      'poetry': 'Poetry',
+      'drama': 'Drama',
+      'adventure': 'Adventure'
+    };
+    return displayNames[genre] || genre.charAt(0).toUpperCase() + genre.slice(1).replace('-', ' ');
   };
 
   if (loading) {
@@ -110,16 +260,45 @@ const Recommendations: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-            Recommended for You
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            Discover books tailored to your preferences and reading goals
-          </p>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+                {userPreferences ? 'Personalized Recommendations' : 'Book Recommendations'}
+              </h1>
+              <p className="text-gray-600 dark:text-gray-400">
+                {userPreferences 
+                  ? 'Books curated based on your preferences and reading goals'
+                  : 'Discover great books across various genres'
+                }
+              </p>
+            </div>
+            
+            {/* Export/Import Controls */}
+            <div className="flex items-center space-x-3 mt-4 sm:mt-0">
+              <button
+                onClick={exportData}
+                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors inline-flex items-center space-x-2"
+              >
+                <Download className="w-4 h-4" />
+                <span>Export Data</span>
+              </button>
+              
+              <label className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors inline-flex items-center space-x-2 cursor-pointer">
+                <Upload className="w-4 h-4" />
+                <span>Import Data</span>
+                <input
+                  type="file"
+                  accept=".json"
+                  onChange={importData}
+                  className="hidden"
+                />
+              </label>
+            </div>
+          </div>
         </div>
 
-        {/* Survey Prompt */}
-        {showSurveyPrompt && (
+        {/* Survey Prompt for non-survey users */}
+        {!userPreferences && (
           <div className="mb-8 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 border border-indigo-200 dark:border-indigo-800 rounded-lg p-6">
             <div className="flex items-start space-x-4">
               <div className="flex-shrink-0">
@@ -127,10 +306,10 @@ const Recommendations: React.FC = () => {
               </div>
               <div className="flex-1">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                  Get Personalized Recommendations
+                  Complete Survey for Detailed Recommendations
                 </h3>
                 <p className="text-gray-600 dark:text-gray-400 mb-4">
-                  Take our quick survey to receive book recommendations tailored specifically to your reading preferences, goals, and interests.
+                  Take our quick survey to receive book recommendations tailored specifically to your reading preferences, goals, and interests. Currently showing random selections.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-3">
                   <Link
@@ -138,38 +317,58 @@ const Recommendations: React.FC = () => {
                     className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg font-medium transition-colors inline-flex items-center justify-center space-x-2"
                   >
                     <Settings className="w-4 h-4" />
-                    <span>Take Survey (2 minutes)</span>
+                    <span>Complete Survey (2 minutes)</span>
                   </Link>
-                  <button
-                    onClick={() => setShowSurveyPrompt(false)}
-                    className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 px-6 py-2 rounded-lg font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                  >
-                    Maybe Later
-                  </button>
                 </div>
               </div>
             </div>
           </div>
         )}
 
-        {/* Genre Filter */}
-        <div className="mb-8">
-          <div className="flex flex-wrap gap-2">
-            {genres.map((genre) => (
-              <button
-                key={genre}
-                onClick={() => setSelectedGenre(genre)}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                  selectedGenre === genre
-                    ? 'bg-indigo-600 text-white'
-                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
-                }`}
-              >
-                {genre.charAt(0).toUpperCase() + genre.slice(1).replace('-', ' ')}
-              </button>
-            ))}
+        {/* Personalized Genre Filter */}
+        {userPreferences && (
+          <div className="mb-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+              Your Preferred Genres
+            </h3>
+            <div className="flex flex-wrap gap-2">
+              {availableGenres.map((genre) => (
+                <button
+                  key={genre}
+                  onClick={() => setSelectedGenre(genre)}
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                    selectedGenre === genre
+                      ? 'bg-indigo-600 text-white'
+                      : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
+                  }`}
+                >
+                  {getGenreDisplayName(genre)}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* Default Genre Filter for non-survey users */}
+        {!userPreferences && (
+          <div className="mb-8">
+            <div className="flex flex-wrap gap-2">
+              {availableGenres.map((genre) => (
+                <button
+                  key={genre}
+                  onClick={() => setSelectedGenre(genre)}
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                    selectedGenre === genre
+                      ? 'bg-indigo-600 text-white'
+                      : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
+                  }`}
+                >
+                  {getGenreDisplayName(genre)}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Books Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -191,10 +390,12 @@ const Recommendations: React.FC = () => {
                   className="w-full h-64 object-cover"
                 />
                 <div className="absolute top-4 right-4 flex flex-col space-y-2">
-                  <div className="flex items-center space-x-1 bg-yellow-400 text-yellow-900 px-2 py-1 rounded-full text-xs font-medium">
-                    <Star className="w-3 h-3 fill-current" />
-                    <span>Recommended</span>
-                  </div>
+                  {userPreferences && (
+                    <div className="flex items-center space-x-1 bg-green-500 text-white px-2 py-1 rounded-full text-xs font-medium">
+                      <Target className="w-3 h-3" />
+                      <span>For You</span>
+                    </div>
+                  )}
                   {book.rating && (
                     <div className="flex items-center space-x-1 bg-white/90 dark:bg-gray-800/90 text-gray-900 dark:text-white px-2 py-1 rounded-full text-xs font-medium">
                       <Star className="w-3 h-3 text-yellow-400 fill-current" />
@@ -253,10 +454,10 @@ const Recommendations: React.FC = () => {
                     </a>
                     <button
                       onClick={() => addToMyBooks(book)}
-                      className="bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 px-4 py-2 rounded-lg font-medium transition-colors inline-flex items-center space-x-2"
+                      className="bg-pink-100 dark:bg-pink-900/30 hover:bg-pink-200 dark:hover:bg-pink-900/50 text-pink-700 dark:text-pink-300 px-4 py-2 rounded-lg font-medium transition-colors inline-flex items-center space-x-2"
                     >
-                      <Plus className="w-4 h-4" />
-                      <span>Add</span>
+                      <Heart className="w-4 h-4" />
+                      <span>Interested</span>
                     </button>
                   </div>
                   
@@ -291,7 +492,10 @@ const Recommendations: React.FC = () => {
               No books found
             </h3>
             <p className="text-gray-600 dark:text-gray-400">
-              Try selecting a different genre or take our survey to get personalized recommendations.
+              {userPreferences 
+                ? 'Try selecting a different genre or update your preferences.'
+                : 'Try selecting a different genre or take our survey for personalized recommendations.'
+              }
             </p>
           </div>
         )}

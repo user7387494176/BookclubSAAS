@@ -8,6 +8,7 @@ const Settings: React.FC = () => {
   const { user, logout } = useAuth();
   const [uploadedBackground, setUploadedBackground] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const importInputRef = useRef<HTMLInputElement>(null);
   const [showPreview, setShowPreview] = useState(false);
   const [previewTheme, setPreviewTheme] = useState(currentTheme);
 
@@ -41,11 +42,13 @@ const Settings: React.FC = () => {
       notes: JSON.parse(localStorage.getItem('focusreads-notes') || '[]'),
       preferences: JSON.parse(localStorage.getItem('focusreads-preferences') || '{}'),
       pomodoroSessions: JSON.parse(localStorage.getItem('focusreads-pomodoro-sessions') || '[]'),
+      pomodoroTotal: localStorage.getItem('focusreads-pomodoro-total') || '0',
       settings: {
         theme: currentTheme,
         isDark,
         customBackground
-      }
+      },
+      exportDate: new Date().toISOString()
     };
 
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -57,6 +60,48 @@ const Settings: React.FC = () => {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  };
+
+  const importData = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = JSON.parse(e.target?.result as string);
+        
+        // Import all data
+        if (data.books) localStorage.setItem('focusreads-books', JSON.stringify(data.books));
+        if (data.notes) localStorage.setItem('focusreads-notes', JSON.stringify(data.notes));
+        if (data.preferences) localStorage.setItem('focusreads-preferences', JSON.stringify(data.preferences));
+        if (data.pomodoroSessions) localStorage.setItem('focusreads-pomodoro-sessions', JSON.stringify(data.pomodoroSessions));
+        if (data.pomodoroTotal) localStorage.setItem('focusreads-pomodoro-total', data.pomodoroTotal);
+        if (data.settings) {
+          if (data.settings.theme) {
+            localStorage.setItem('focusreads-theme', data.settings.theme);
+            setTheme(data.settings.theme);
+          }
+          if (data.settings.isDark !== undefined) {
+            localStorage.setItem('focusreads-dark', JSON.stringify(data.settings.isDark));
+            if (data.settings.isDark !== isDark) {
+              toggleDark();
+            }
+          }
+          if (data.settings.customBackground) {
+            localStorage.setItem('focusreads-background', data.settings.customBackground);
+            setCustomBackground(data.settings.customBackground);
+          }
+        }
+
+        alert('Data imported successfully! Your books, notes, preferences, and settings have been restored.');
+        window.location.reload();
+      } catch (error) {
+        alert('Error importing data. Please check the file format.');
+        console.error('Import error:', error);
+      }
+    };
+    reader.readAsText(file);
   };
 
   const clearAllData = () => {
@@ -89,7 +134,7 @@ const Settings: React.FC = () => {
             Settings
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
-            Customize your FocusReads experience
+            Customize your FocusReads experience and manage your data
           </p>
         </div>
 
@@ -121,6 +166,81 @@ const Settings: React.FC = () => {
               </button>
             </div>
           )}
+
+          {/* Data Management Section */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+              Data Management
+            </h2>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
+              Export your data to backup your books, notes, preferences, and Pomodoro sessions. 
+              Import data to restore a previous backup or transfer from another device.
+            </p>
+            
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-medium text-gray-900 dark:text-white">
+                    Export All Data
+                  </h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Download all your books, notes, survey preferences, Pomodoro sessions, and settings
+                  </p>
+                </div>
+                <button
+                  onClick={exportData}
+                  className="theme-primary hover:opacity-90 text-white px-4 py-2 rounded-lg font-medium transition-colors inline-flex items-center space-x-2"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>Export</span>
+                </button>
+              </div>
+
+              <div className="border-t border-gray-200 dark:border-gray-600 pt-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-medium text-gray-900 dark:text-white">
+                      Import Data
+                    </h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      Restore from a previous backup or transfer data from another device
+                    </p>
+                  </div>
+                  <label className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors inline-flex items-center space-x-2 cursor-pointer">
+                    <Upload className="w-4 h-4" />
+                    <span>Import</span>
+                    <input
+                      ref={importInputRef}
+                      type="file"
+                      accept=".json"
+                      onChange={importData}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+              </div>
+
+              <div className="border-t border-gray-200 dark:border-gray-600 pt-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-medium text-gray-900 dark:text-white">
+                      Clear All Data
+                    </h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      Remove all books, notes, settings, and Pomodoro data (cannot be undone)
+                    </p>
+                  </div>
+                  <button
+                    onClick={clearAllData}
+                    className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors inline-flex items-center space-x-2"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    <span>Clear All</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
 
           {/* Appearance Section */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
@@ -262,52 +382,6 @@ const Settings: React.FC = () => {
                     </div>
                   </div>
                 )}
-              </div>
-            </div>
-          </div>
-
-          {/* Data Management Section */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-              Data Management
-            </h2>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-medium text-gray-900 dark:text-white">
-                    Export Data
-                  </h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Download all your books, notes, preferences, and Pomodoro sessions
-                  </p>
-                </div>
-                <button
-                  onClick={exportData}
-                  className="theme-primary hover:opacity-90 text-white px-4 py-2 rounded-lg font-medium transition-colors inline-flex items-center space-x-2"
-                >
-                  <Download className="w-4 h-4" />
-                  <span>Export</span>
-                </button>
-              </div>
-
-              <div className="border-t border-gray-200 dark:border-gray-600 pt-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-medium text-gray-900 dark:text-white">
-                      Clear All Data
-                    </h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      Remove all books, notes, settings, and Pomodoro data (cannot be undone)
-                    </p>
-                  </div>
-                  <button
-                    onClick={clearAllData}
-                    className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors inline-flex items-center space-x-2"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                    <span>Clear All</span>
-                  </button>
-                </div>
               </div>
             </div>
           </div>
