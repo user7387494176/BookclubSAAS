@@ -1,4 +1,4 @@
-// Enhanced ISBN Lookup Service using isbnsearch.org API
+// Enhanced ISBN Lookup Service using Open Library API as primary source
 export interface ISBNBookData {
   title: string;
   author: string;
@@ -52,46 +52,49 @@ export class ISBNLookupService {
         throw new Error('Invalid ISBN format');
       }
 
-      // Use isbnsearch.org API
-      const response = await fetch(`https://isbnsearch.org/isbn/${normalizedISBN}`);
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+      // Use Open Library API as primary source (more reliable, no CORS issues)
+      const openLibraryResult = await this.lookupWithOpenLibrary(normalizedISBN);
+      if (openLibraryResult) {
+        return openLibraryResult;
       }
 
-      const data = await response.json();
-      
-      if (data && data.title) {
-        return {
-          title: data.title || 'Unknown Title',
-          author: data.author || 'Unknown Author',
-          cover: data.image || this.generateCoverUrl(data.title || 'Unknown Title'),
-          isbn: this.formatISBN(normalizedISBN),
-          publishDate: data.date_published || data.year || '',
-          genre: data.subjects?.[0] || '',
-          description: data.synopsis || data.overview || '',
-          tags: data.subjects || [],
-          amazonUrl: data.amazon_url || `https://www.amazon.com/s?k=${normalizedISBN}&i=stripbooks`,
-          price: data.msrp || '',
-          publisher: data.publisher || '',
-          language: data.language || 'English',
-          pages: data.pages ? parseInt(data.pages) : undefined
-        };
+      // Fallback to isbnsearch.org only if Open Library fails
+      try {
+        const response = await fetch(`https://isbnsearch.org/isbn/${normalizedISBN}`);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        
+        if (data && data.title) {
+          return {
+            title: data.title || 'Unknown Title',
+            author: data.author || 'Unknown Author',
+            cover: data.image || this.generateCoverUrl(data.title || 'Unknown Title'),
+            isbn: this.formatISBN(normalizedISBN),
+            publishDate: data.date_published || data.year || '',
+            genre: data.subjects?.[0] || '',
+            description: data.synopsis || data.overview || '',
+            tags: data.subjects || [],
+            amazonUrl: data.amazon_url || `https://www.amazon.com/s?k=${normalizedISBN}&i=stripbooks`,
+            price: data.msrp || '',
+            publisher: data.publisher || '',
+            language: data.language || 'English',
+            pages: data.pages ? parseInt(data.pages) : undefined
+          };
+        }
+      } catch (isbnSearchError) {
+        console.warn('isbnsearch.org lookup failed (likely CORS):', isbnSearchError);
+        // Continue to return null if both APIs fail
       }
       
-      // If no data found, try alternative approach with Open Library
-      return await this.lookupWithOpenLibrary(normalizedISBN);
+      return null;
       
     } catch (error) {
       console.error('ISBN lookup failed:', error);
-      
-      // Fallback to Open Library API
-      try {
-        return await this.lookupWithOpenLibrary(this.normalizeISBN(isbn));
-      } catch (fallbackError) {
-        console.error('Fallback lookup failed:', fallbackError);
-        return null;
-      }
+      return null;
     }
   }
 
