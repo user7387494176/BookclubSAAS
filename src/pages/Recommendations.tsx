@@ -33,6 +33,17 @@ const Recommendations: React.FC = () => {
     'Biographies & Memoirs'
   ];
 
+  // Mood-based genre mapping for enhanced recommendations
+  const moodGenreMapping = {
+    'uplifting': ['Biographies & Memoirs', 'Self-Help', 'Religion & Spirituality', 'Humor'],
+    'exciting': ['Action & Adventure', 'Mystery & Thriller', 'Science Fiction & Fantasy'],
+    'romantic': ['Romance', 'LGBTQ+ Books', 'Historical Fiction'],
+    'informative': ['Education & Reference', 'Business & Investing', 'Science & Math', 'History'],
+    'dark': ['Mystery & Thriller', 'Psychology', 'Politics & Social Sciences'],
+    'relaxing': ['Science Fiction & Fantasy', 'Historical Fiction', 'Travel'],
+    'serious': ['Politics & Social Sciences', 'History', 'Psychology', 'Religion & Spirituality']
+  };
+
   useEffect(() => {
     loadUserPreferences();
     loadBooks();
@@ -52,8 +63,20 @@ const Recommendations: React.FC = () => {
       setUserPreferences(parsedPreferences);
       setIsTrendingMode(false);
       
-      // Use user's selected genres directly
-      setAvailableGenres(['all', ...parsedPreferences.genres]);
+      // Combine user's selected genres with mood-based genres
+      let recommendedGenres = [...parsedPreferences.genres];
+      
+      // Add mood-based genres if mood is selected
+      if (parsedPreferences.mood && moodGenreMapping[parsedPreferences.mood as keyof typeof moodGenreMapping]) {
+        const moodGenres = moodGenreMapping[parsedPreferences.mood as keyof typeof moodGenreMapping];
+        moodGenres.forEach(genre => {
+          if (!recommendedGenres.includes(genre)) {
+            recommendedGenres.push(genre);
+          }
+        });
+      }
+      
+      setAvailableGenres(['all', ...recommendedGenres]);
     } else {
       // No survey completed - use trending genres
       setUserPreferences(null);
@@ -68,14 +91,21 @@ const Recommendations: React.FC = () => {
       let booksData: AmazonBook[];
       
       if (userPreferences && selectedGenre === 'all') {
-        // Load books from user's preferred genres
-        const preferredGenres = userPreferences.genres;
+        // Load books based on user preferences and mood
+        let targetGenres = [...userPreferences.genres];
         
-        // Get books from each preferred genre
+        // Prioritize mood-based genres
+        if (userPreferences.mood && moodGenreMapping[userPreferences.mood as keyof typeof moodGenreMapping]) {
+          const moodGenres = moodGenreMapping[userPreferences.mood as keyof typeof moodGenreMapping];
+          // Put mood genres first, then user selected genres
+          targetGenres = [...moodGenres, ...userPreferences.genres.filter(g => !moodGenres.includes(g))];
+        }
+        
+        // Get books from each genre
         const allBooks: AmazonBook[] = [];
-        const booksPerGenre = Math.ceil(8 / preferredGenres.length);
+        const booksPerGenre = Math.ceil(8 / Math.min(targetGenres.length, 4)); // Limit to 4 genres max
         
-        for (const genre of preferredGenres) {
+        for (const genre of targetGenres.slice(0, 4)) {
           const genreBooks = await AmazonBooksService.getBooksByGenre(genre.toLowerCase().replace(/\s+/g, '-'), booksPerGenre);
           allBooks.push(...genreBooks);
         }
@@ -212,6 +242,22 @@ const Recommendations: React.FC = () => {
     return genre;
   };
 
+  const getMoodLabel = () => {
+    if (!userPreferences?.mood) return '';
+    
+    const moodLabels = {
+      'uplifting': 'Uplifting & Inspirational',
+      'exciting': 'Exciting & Thrilling',
+      'romantic': 'Romantic & Emotional',
+      'informative': 'Informative & Educational',
+      'dark': 'Dark & Thought-Provoking',
+      'relaxing': 'Relaxing & Escapist',
+      'serious': 'Serious & Reflective'
+    };
+    
+    return moodLabels[userPreferences.mood as keyof typeof moodLabels] || '';
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
@@ -244,7 +290,9 @@ const Recommendations: React.FC = () => {
               <p className="text-gray-600 dark:text-gray-400">
                 {isTrendingMode 
                   ? 'Complete Survey to Tailor Your Recommendations'
-                  : 'Books curated based on your preferences and reading goals'
+                  : userPreferences?.mood 
+                    ? `Books curated for your ${getMoodLabel().toLowerCase()} mood and preferences`
+                    : 'Books curated based on your preferences and reading goals'
                 }
               </p>
             </div>
@@ -285,7 +333,7 @@ const Recommendations: React.FC = () => {
                   Currently Showing Trending Genres
                 </h3>
                 <p className="text-gray-600 dark:text-gray-400 mb-4">
-                  These are popular books across trending genres. Take our quick survey to receive book recommendations tailored specifically to your reading preferences, goals, and interests.
+                  These are popular books across trending genres. Take our quick survey to receive book recommendations tailored specifically to your reading preferences, mood, and interests.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-3">
                   <Link
@@ -301,11 +349,28 @@ const Recommendations: React.FC = () => {
           </div>
         )}
 
+        {/* Mood-Based Recommendations Info */}
+        {userPreferences?.mood && (
+          <div className="mb-6 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 border border-indigo-200 dark:border-indigo-800 rounded-lg p-4">
+            <div className="flex items-center space-x-3">
+              <Target className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+              <div>
+                <h4 className="font-medium text-gray-900 dark:text-white">
+                  Recommendations for your {getMoodLabel()} mood
+                </h4>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  We've enhanced your recommendations based on your current reading mood and selected genres.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Personalized Genre Filter for survey users */}
         {userPreferences && (
           <div className="mb-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-              Your Preferred Genres
+              Your Recommended Genres
             </h3>
             <div className="flex flex-wrap gap-2">
               {availableGenres.map((genre) => (

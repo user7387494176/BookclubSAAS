@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Check } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Check, Heart, Zap, BookOpen, Brain, Moon, Users } from 'lucide-react';
 
 const Survey: React.FC = () => {
   const navigate = useNavigate();
@@ -48,12 +48,64 @@ const Survey: React.FC = () => {
   // Flatten all genres for selection
   const allGenres = Object.keys(genreCategories);
 
+  // Mood-based genre classification
   const moods = [
-    { value: 'relaxed', label: 'Relaxed & Contemplative' },
-    { value: 'adventurous', label: 'Adventurous & Exciting' },
-    { value: 'learning', label: 'Learning & Growth' },
-    { value: 'escapist', label: 'Escapist & Immersive' },
-    { value: 'inspiring', label: 'Inspiring & Motivational' }
+    { 
+      value: 'uplifting', 
+      label: 'Uplifting & Inspirational',
+      description: 'Looking for motivation, personal growth, and positive stories',
+      icon: <Heart className="w-5 h-5" />,
+      color: 'bg-green-100 dark:bg-green-900/30 border-green-500 text-green-700 dark:text-green-300',
+      genres: ['Biographies & Memoirs', 'Self-Help', 'Religion & Spirituality', 'Humor']
+    },
+    { 
+      value: 'exciting', 
+      label: 'Exciting & Thrilling',
+      description: 'Craving adventure, suspense, and adrenaline-pumping stories',
+      icon: <Zap className="w-5 h-5" />,
+      color: 'bg-red-100 dark:bg-red-900/30 border-red-500 text-red-700 dark:text-red-300',
+      genres: ['Action & Adventure', 'Mystery & Thriller', 'Science Fiction & Fantasy']
+    },
+    { 
+      value: 'romantic', 
+      label: 'Romantic & Emotional',
+      description: 'Seeking love stories, emotional depth, and heartfelt narratives',
+      icon: <Heart className="w-5 h-5" />,
+      color: 'bg-pink-100 dark:bg-pink-900/30 border-pink-500 text-pink-700 dark:text-pink-300',
+      genres: ['Romance', 'LGBTQ+ Books', 'Historical Fiction']
+    },
+    { 
+      value: 'informative', 
+      label: 'Informative & Educational',
+      description: 'Want to learn new things and expand your knowledge',
+      icon: <BookOpen className="w-5 h-5" />,
+      color: 'bg-blue-100 dark:bg-blue-900/30 border-blue-500 text-blue-700 dark:text-blue-300',
+      genres: ['Education & Reference', 'Business & Investing', 'Science & Math', 'History']
+    },
+    { 
+      value: 'dark', 
+      label: 'Dark & Thought-Provoking',
+      description: 'Interested in complex themes, psychological depth, and challenging content',
+      icon: <Moon className="w-5 h-5" />,
+      color: 'bg-gray-100 dark:bg-gray-700 border-gray-500 text-gray-700 dark:text-gray-300',
+      genres: ['Mystery & Thriller', 'Psychology', 'Politics & Social Sciences']
+    },
+    { 
+      value: 'relaxing', 
+      label: 'Relaxing & Escapist',
+      description: 'Looking for light, enjoyable reads to unwind and escape',
+      icon: <Users className="w-5 h-5" />,
+      color: 'bg-purple-100 dark:bg-purple-900/30 border-purple-500 text-purple-700 dark:text-purple-300',
+      genres: ['Science Fiction & Fantasy', 'Historical Fiction', 'Travel']
+    },
+    { 
+      value: 'serious', 
+      label: 'Serious & Reflective',
+      description: 'Seeking deep, meaningful content that challenges your thinking',
+      icon: <Brain className="w-5 h-5" />,
+      color: 'bg-indigo-100 dark:bg-indigo-900/30 border-indigo-500 text-indigo-700 dark:text-indigo-300',
+      genres: ['Politics & Social Sciences', 'History', 'Psychology', 'Religion & Spirituality']
+    }
   ];
 
   const readingGoals = [
@@ -125,25 +177,56 @@ const Survey: React.FC = () => {
       )
     },
     {
-      title: 'What\'s your current mood?',
-      subtitle: 'Choose the option that best describes what you\'re looking for',
+      title: 'What type of mood are you in?',
+      subtitle: 'Choose the mood that best describes what you\'re looking for right now',
       content: (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {moods.map((mood) => (
             <button
               key={mood.value}
               onClick={() => setPreferences(prev => ({ ...prev, mood: mood.value }))}
-              className={`w-full p-4 rounded-lg border-2 text-left transition-all ${
+              className={`w-full p-4 rounded-lg border-2 text-left transition-all hover:shadow-md ${
                 preferences.mood === mood.value
-                  ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20'
-                  : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
+                  ? mood.color
+                  : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500 bg-white dark:bg-gray-800'
               }`}
             >
-              <div className="flex items-center justify-between">
-                <span className="font-medium">{mood.label}</span>
-                {preferences.mood === mood.value && (
-                  <Check className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-                )}
+              <div className="flex items-start space-x-3">
+                <div className={`flex-shrink-0 p-2 rounded-lg ${
+                  preferences.mood === mood.value 
+                    ? 'bg-white/20' 
+                    : 'bg-gray-100 dark:bg-gray-700'
+                }`}>
+                  {mood.icon}
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center justify-between mb-1">
+                    <h4 className="font-semibold text-gray-900 dark:text-white">
+                      {mood.label}
+                    </h4>
+                    {preferences.mood === mood.value && (
+                      <Check className="w-5 h-5 text-current flex-shrink-0" />
+                    )}
+                  </div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                    {mood.description}
+                  </p>
+                  <div className="flex flex-wrap gap-1">
+                    {mood.genres.slice(0, 3).map((genre, index) => (
+                      <span
+                        key={genre}
+                        className="inline-block px-2 py-1 text-xs rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400"
+                      >
+                        {genre}
+                      </span>
+                    ))}
+                    {mood.genres.length > 3 && (
+                      <span className="inline-block px-2 py-1 text-xs rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400">
+                        +{mood.genres.length - 3} more
+                      </span>
+                    )}
+                  </div>
+                </div>
               </div>
             </button>
           ))}
@@ -264,6 +347,10 @@ const Survey: React.FC = () => {
     }
   };
 
+  const getSelectedMood = () => {
+    return moods.find(mood => mood.value === preferences.mood);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -311,6 +398,12 @@ const Survey: React.FC = () => {
               {currentStep === 0 && (
                 <div className="text-sm text-gray-500 dark:text-gray-400">
                   Selected: {preferences.genres.length} genre{preferences.genres.length !== 1 ? 's' : ''}
+                </div>
+              )}
+              
+              {currentStep === 1 && preferences.mood && (
+                <div className="text-sm text-gray-500 dark:text-gray-400">
+                  Mood: {getSelectedMood()?.label}
                 </div>
               )}
               
