@@ -172,11 +172,63 @@ const Survey: React.FC = () => {
     { value: '2hours', label: '2+ hours' }
   ];
 
+  // Updated book length preferences with detailed descriptions
   const bookLengths = [
-    { value: 'short', label: 'Short (< 200 pages)' },
-    { value: 'medium', label: 'Medium (200-400 pages)' },
-    { value: 'long', label: 'Long (400+ pages)' },
-    { value: 'any', label: 'Any length' }
+    { 
+      value: 'short', 
+      label: 'Short Reads',
+      description: 'Quick, engaging reads perfect for busy schedules',
+      details: [
+        'Novellas: 20,000-40,000 words (100-200 pages)',
+        'Short Stories: Under 20,000 words'
+      ],
+      timeCommitment: 'Can be finished in 1-3 reading sessions',
+      benefits: 'Great for trying new genres and authors'
+    },
+    { 
+      value: 'medium', 
+      label: 'Medium-Length Books',
+      description: 'The sweet spot for most readers - substantial but manageable',
+      details: [
+        'Standard Novels: 40,000-80,000 words (200-400 pages)',
+        'Most Nonfiction: Comprehensive yet focused topics'
+      ],
+      timeCommitment: 'Typically 1-2 weeks of regular reading',
+      benefits: 'Perfect balance of depth and accessibility'
+    },
+    { 
+      value: 'long', 
+      label: 'Long Reads',
+      description: 'Immersive experiences for dedicated readers',
+      details: [
+        'Epic Novels: 80,000-120,000 words (400-600 pages)',
+        'Comprehensive Nonfiction: In-depth topic exploration'
+      ],
+      timeCommitment: '2-4 weeks of regular reading',
+      benefits: 'Deep character development and complex plots'
+    },
+    { 
+      value: 'very-long', 
+      label: 'Very Long Reads',
+      description: 'Epic journeys for the most committed readers',
+      details: [
+        'Literary Epics: 120,000+ words (600+ pages)',
+        'Reference Books: Encyclopedias and textbooks'
+      ],
+      timeCommitment: '1+ months of dedicated reading',
+      benefits: 'Comprehensive exploration of subjects'
+    },
+    { 
+      value: 'any', 
+      label: 'Any Length',
+      description: 'Open to books of all sizes based on content',
+      details: [
+        'No preference on word count or page length',
+        'Focus on quality and interest over length'
+      ],
+      timeCommitment: 'Varies by book selection',
+      benefits: 'Maximum flexibility in book recommendations'
+    }
   ];
 
   const steps = [
@@ -366,28 +418,69 @@ const Survey: React.FC = () => {
       )
     },
     {
-      title: 'Book length preference?',
-      subtitle: 'What length books do you prefer?',
+      title: 'What book length do you prefer?',
+      subtitle: 'We\'ll recommend books that match your preferred reading commitment level',
       content: (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {bookLengths.map((length) => (
             <button
               key={length.value}
               onClick={() => setPreferences(prev => ({ ...prev, preferredLength: length.value }))}
-              className={`w-full p-4 rounded-lg border-2 text-left transition-all ${
+              className={`w-full p-6 rounded-lg border-2 text-left transition-all hover:shadow-md ${
                 preferences.preferredLength === length.value
                   ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20'
                   : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
               }`}
             >
-              <div className="flex items-center justify-between">
-                <span className="font-medium">{length.label}</span>
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex-1">
+                  <h4 className="font-semibold text-gray-900 dark:text-white text-lg mb-1">
+                    {length.label}
+                  </h4>
+                  <p className="text-gray-600 dark:text-gray-400 text-sm mb-3">
+                    {length.description}
+                  </p>
+                </div>
                 {preferences.preferredLength === length.value && (
-                  <Check className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                  <Check className="w-6 h-6 text-indigo-600 dark:text-indigo-400 flex-shrink-0 mt-1" />
                 )}
+              </div>
+              
+              <div className="space-y-3">
+                <div>
+                  <h5 className="font-medium text-gray-900 dark:text-white text-sm mb-1">
+                    What to Expect:
+                  </h5>
+                  <ul className="text-xs text-gray-600 dark:text-gray-400 space-y-1">
+                    {length.details.map((detail, index) => (
+                      <li key={index} className="flex items-start">
+                        <span className="w-1 h-1 bg-gray-400 rounded-full mt-2 mr-2 flex-shrink-0"></span>
+                        {detail}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                  <div className="bg-blue-50 dark:bg-blue-900/20 p-2 rounded">
+                    <span className="font-medium text-blue-800 dark:text-blue-300">Time Commitment:</span>
+                    <p className="text-blue-700 dark:text-blue-400">{length.timeCommitment}</p>
+                  </div>
+                  <div className="bg-green-50 dark:bg-green-900/20 p-2 rounded">
+                    <span className="font-medium text-green-800 dark:text-green-300">Benefits:</span>
+                    <p className="text-green-700 dark:text-green-400">{length.benefits}</p>
+                  </div>
+                </div>
               </div>
             </button>
           ))}
+          
+          <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+            <p className="text-sm text-amber-800 dark:text-amber-200">
+              <strong>How We Use This:</strong> Your length preference helps us recommend books that fit your reading schedule and commitment level. 
+              We'll prioritize books within your preferred range while occasionally suggesting exceptional titles outside it.
+            </p>
+          </div>
         </div>
       )
     }
@@ -422,6 +515,10 @@ const Survey: React.FC = () => {
 
   const getSelectedMood = () => {
     return moods.find(mood => mood.value === preferences.mood);
+  };
+
+  const getSelectedLength = () => {
+    return bookLengths.find(length => length.value === preferences.preferredLength);
   };
 
   return (
@@ -483,6 +580,12 @@ const Survey: React.FC = () => {
               {currentStep === 2 && (
                 <div className="text-sm text-gray-500 dark:text-gray-400">
                   Goals: {preferences.readingGoals.length} selected
+                </div>
+              )}
+
+              {currentStep === 4 && preferences.preferredLength && (
+                <div className="text-sm text-gray-500 dark:text-gray-400">
+                  Length: {getSelectedLength()?.label}
                 </div>
               )}
               
