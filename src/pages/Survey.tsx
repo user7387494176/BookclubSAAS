@@ -128,7 +128,7 @@ const Survey: React.FC = () => {
         'Escape into a Different World',
         'Discover New Authors or Genres',
         'Set a Reading Target',
-        'Join a Book Club or Discussion Group'
+        'Joined A Book Club'
       ]
     },
     'Intellectual Curiosity': {

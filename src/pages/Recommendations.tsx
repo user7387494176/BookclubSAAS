@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ExternalLink, ShoppingCart, Heart, Star, BookOpen, Check, RefreshCw, Settings, Target, Download, Upload, TrendingUp, Volume2, VolumeX } from 'lucide-react';
+import { ExternalLink, ShoppingCart, Heart, Star, BookOpen, Check, RefreshCw, Settings, Target, Download, Upload, TrendingUp, Volume2, VolumeX, Eye } from 'lucide-react';
 import { AmazonBooksService, AmazonBook } from '../services/amazonBooks';
+import { RecentlyViewedService } from '../services/recentlyViewed';
 
 interface UserPreferences {
   genres: string[];
@@ -21,6 +22,7 @@ const Recommendations: React.FC = () => {
   const [availableGenres, setAvailableGenres] = useState<string[]>([]);
   const [isTrendingMode, setIsTrendingMode] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [displayedBooks, setDisplayedBooks] = useState<Set<string>>(new Set());
 
   // Trending genres when no survey is completed
   const trendingGenres = [
@@ -135,7 +137,25 @@ const Recommendations: React.FC = () => {
         booksData = await AmazonBooksService.getBooksByGenre(genreKey, 8);
       }
       
-      setBooks(booksData);
+      // Filter out books that have already been displayed
+      const newBooks = booksData.filter(book => !displayedBooks.has(book.id));
+      
+      // If we don't have enough new books, get more
+      if (newBooks.length < 8) {
+        const additionalBooks = await AmazonBooksService.getRandomBooksByGenre(
+          selectedGenre === 'all' ? 'fiction' : selectedGenre.toLowerCase().replace(/\s+/g, '-'),
+          Array.from(displayedBooks)
+        );
+        newBooks.push(...additionalBooks.slice(0, 8 - newBooks.length));
+      }
+      
+      setBooks(newBooks.slice(0, 8));
+      
+      // Track displayed books
+      const newDisplayedBooks = new Set(displayedBooks);
+      newBooks.forEach(book => newDisplayedBooks.add(book.id));
+      setDisplayedBooks(newDisplayedBooks);
+      
     } catch (error) {
       console.error('Failed to load books:', error);
     } finally {
@@ -212,18 +232,53 @@ const Recommendations: React.FC = () => {
     
     try {
       const currentBookIds = books.map(b => b.id);
-      const newBooks = await AmazonBooksService.getRandomBooksByGenre(genre.toLowerCase(), currentBookIds);
+      const allDisplayedIds = Array.from(displayedBooks);
+      const newBooks = await AmazonBooksService.getRandomBooksByGenre(genre.toLowerCase(), [...currentBookIds, ...allDisplayedIds]);
       
       if (newBooks.length > 0) {
+        const newBook = newBooks[0];
         setBooks(prev => prev.map(book => 
-          book.id === excludeId ? newBooks[0] : book
+          book.id === excludeId ? newBook : book
         ));
+        
+        // Update displayed books tracking
+        setDisplayedBooks(prev => {
+          const updated = new Set(prev);
+          updated.add(newBook.id);
+          return updated;
+        });
       }
     } catch (error) {
       console.error('Failed to generate new recommendation:', error);
     } finally {
       setRefreshingBook(null);
     }
+  };
+
+  const handleBookView = (book: AmazonBook) => {
+    // Add to recently viewed when user clicks on book sample
+    RecentlyViewedService.addBook({
+      id: book.id,
+      title: book.title,
+      author: book.author,
+      cover: book.cover,
+      genre: book.genre,
+      rating: book.rating,
+      amazonUrl: book.amazonUrl
+    }, 'viewed');
+  };
+
+  const handleSampleRead = (book: AmazonBook) => {
+    // Add to recently viewed when user reads sample
+    RecentlyViewedService.addBook({
+      id: book.id,
+      title: book.title,
+      author: book.author,
+      cover: book.cover,
+      genre: book.genre,
+      rating: book.rating,
+      amazonUrl: book.amazonUrl
+    }, 'sample-read');
   };
 
   const exportData = () => {
@@ -345,6 +400,17 @@ const Recommendations: React.FC = () => {
             
             {/* Controls */}
             <div className="flex items-center space-x-3 mt-4 sm:mt-0">
+              {/* Recently Viewed Button */}
+              {RecentlyViewedService.hasRecentBooks() && (
+                <Link
+                  to="/recently-viewed"
+                  className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-medium transition-colors inline-flex items-center space-x-2"
+                >
+                  <Eye className="w-4 h-4" />
+                  <span>Recently Viewed ({RecentlyViewedService.getBookCount()})</span>
+                </Link>
+              )}
+              
               {/* Sound Toggle */}
               <button
                 onClick={() => setSoundEnabled(!soundEnabled)}
@@ -527,8 +593,10 @@ const Recommendations: React.FC = () => {
                   <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2 line-clamp-2">
                     {book.title}
                   </h3>
-                  <p className="text-gray-600 dark:text-gray-400 mb-1">by {book.author}</p>
-                  <div className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
+                  <div className="flex items-center space-x-2 text-gray-600 dark:text-gray-400 mb-2">
+                    <span>by {book.author}</span>
+                  </div>
+                  <div className="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400 mb-4">
                     <span>{book.publishDate}</span>
                     <span>•</span>
                     <span className="capitalize">{book.genre?.replace('-', ' ')}</span>
@@ -572,6 +640,7 @@ const Recommendations: React.FC = () => {
                       href={book.amazonUrl}
                       target="_blank"
                       rel="noopener noreferrer"
+                      onClick={() => handleBookView(book)}
                       className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition-colors inline-flex items-center justify-center space-x-2"
                     >
                       <ShoppingCart className="w-4 h-4" />
@@ -583,6 +652,7 @@ const Recommendations: React.FC = () => {
                   <div className="flex space-x-2">
                     <Link
                       to={`/book-sample/${book.id}`}
+                      onClick={() => handleSampleRead(book)}
                       className="flex-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 px-4 py-2 rounded-lg font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors inline-flex items-center justify-center space-x-2"
                     >
                       <BookOpen className="w-4 h-4" />
@@ -592,6 +662,7 @@ const Recommendations: React.FC = () => {
                       href={book.amazonUrl}
                       target="_blank"
                       rel="noopener noreferrer"
+                      onClick={() => handleBookView(book)}
                       className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 px-4 py-2 rounded-lg font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors inline-flex items-center space-x-2"
                     >
                       <ExternalLink className="w-4 h-4" />

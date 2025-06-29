@@ -113,7 +113,7 @@ export const PomodoroProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   }, []);
 
-  // Save sessions to localStorage
+  // Save sessions to localStorage with persistent session counter
   useEffect(() => {
     localStorage.setItem('focusreads-pomodoro-sessions', JSON.stringify(sessions));
     localStorage.setItem('focusreads-pomodoro-total', totalSessions.toString());
@@ -285,7 +285,9 @@ export const PomodoroProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
 
     if (currentType === 'focus') {
-      setTotalSessions(prev => prev + 1);
+      // Increment session counter persistently
+      const newTotalSessions = totalSessions + 1;
+      setTotalSessions(newTotalSessions);
       
       // Determine break type based on session count
       const nextBreakType = session % 4 === 0 ? 'long-break' : 'short-break';

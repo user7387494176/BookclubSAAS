@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Play, Pause, RotateCcw, Volume2, VolumeX, Clock, Coffee, Upload, FileText, BookOpen, Headphones, X, Settings, Music } from 'lucide-react';
+import { Play, Pause, RotateCcw, Volume2, VolumeX, Clock, Coffee, Upload, FileText, BookOpen, Headphones, X, Settings, Music, Target, Lightbulb, Globe, Trophy, Heart } from 'lucide-react';
 import PDFReader from '../components/Reader/PDFReader';
 import EPUBReader from '../components/Reader/EPUBReader';
 import AudioPlayer from '../components/Audio/AudioPlayer';
@@ -36,6 +36,85 @@ const FocusMode: React.FC = () => {
   const [showPlaylistPlayer, setShowPlaylistPlayer] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Get user reading goals from localStorage
+  const getUserGoals = () => {
+    try {
+      const preferences = localStorage.getItem('focusreads-preferences');
+      if (preferences) {
+        const parsed = JSON.parse(preferences);
+        return parsed.readingGoals || [];
+      }
+    } catch (error) {
+      console.error('Error parsing preferences:', error);
+    }
+    return [];
+  };
+
+  const userGoals = getUserGoals();
+
+  // Reading goal categories with icons
+  const readingGoalCategories = {
+    'Personal Growth & Development': {
+      icon: <Target className="w-4 h-4" />,
+      color: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300',
+      goals: [
+        'Learn New Skills or Knowledge',
+        'Improve Mental Health',
+        'Develop Empathy and Understanding',
+        'Establish a Reading Habit'
+      ]
+    },
+    'Entertainment & Enjoyment': {
+      icon: <Heart className="w-4 h-4" />,
+      color: 'bg-pink-100 dark:bg-pink-900/30 text-pink-700 dark:text-pink-300',
+      goals: [
+        'Escape into a Different World',
+        'Discover New Authors or Genres',
+        'Set a Reading Target',
+        'Joined A Book Club'
+      ]
+    },
+    'Intellectual Curiosity': {
+      icon: <Lightbulb className="w-4 h-4" />,
+      color: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300',
+      goals: [
+        'Explore New Topics or Subjects',
+        'Stay Informed on Current Events',
+        'Enhance Critical Thinking',
+        'Read Classic Literature'
+      ]
+    },
+    'Social & Community': {
+      icon: <Globe className="w-4 h-4" />,
+      color: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300',
+      goals: [
+        'Connect with Others Through Reading',
+        'Support Literacy and Education',
+        'Read with a Child or Young Adult',
+        'Participate in Reading Challenges'
+      ]
+    },
+    'Personal Achievement': {
+      icon: <Trophy className="w-4 h-4" />,
+      color: 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300',
+      goals: [
+        'Set Page or Word Goals',
+        'Finish a Long or Challenging Book',
+        'Read Outside Your Comfort Zone',
+        'Track Reading Progress'
+      ]
+    }
+  };
+
+  const getGoalCategory = (goal: string) => {
+    for (const [categoryName, category] of Object.entries(readingGoalCategories)) {
+      if (category.goals.includes(goal)) {
+        return { name: categoryName, ...category };
+      }
+    }
+    return null;
+  };
 
   const musicOptions: YouTubeMusic[] = [
     { "id": "jfKfPfyJRdk", "title": "Lofi Hip Hop Radio - Beats to Relax/Study" },
@@ -169,6 +248,41 @@ const FocusMode: React.FC = () => {
             Enhance your reading with Pomodoro technique, file readers, and ambient music
           </p>
         </div>
+
+        {/* Reading Goals Section */}
+        {userGoals.length > 0 && (
+          <div className="mb-8 bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6">
+            <div className="flex items-center space-x-2 mb-4">
+              <Target className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Your Reading Goals</h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {userGoals.map((goal, index) => {
+                const category = getGoalCategory(goal);
+                return (
+                  <div
+                    key={index}
+                    className={`p-3 rounded-lg border ${category ? category.color : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'}`}
+                  >
+                    <div className="flex items-center space-x-2">
+                      {category?.icon}
+                      <span className="text-sm font-medium">{goal}</span>
+                    </div>
+                    {category && (
+                      <div className="text-xs opacity-75 mt-1">{category.name}</div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+              <p className="text-sm text-blue-800 dark:text-blue-200">
+                <strong>Focus Tip:</strong> Use your Pomodoro sessions to make progress toward these goals. 
+                Each focused reading session brings you closer to achieving your reading objectives.
+              </p>
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Timer Section */}

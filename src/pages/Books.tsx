@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Search, Filter, BookOpen, Calendar, Tag, Star, Trash2, Edit3, Loader, AlertCircle, CheckCircle, Download, Upload, Settings, FileText, SortAsc } from 'lucide-react';
+import { Plus, Search, Filter, BookOpen, Calendar, Tag, Star, Trash2, Edit3, Loader, AlertCircle, CheckCircle, Download, Upload, Settings, FileText, SortAsc, Eye, Target, Lightbulb, Globe, Trophy, Heart } from 'lucide-react';
 import { Book } from '../types';
 import { ISBNLookupService, ISBNBookData } from '../services/isbnLookup';
 import { PDFExportService } from '../services/pdfExport';
+import { RecentlyViewedService } from '../services/recentlyViewed';
 
 const Books: React.FC = () => {
   const [books, setBooks] = useState<Book[]>([]);
@@ -31,6 +32,85 @@ const Books: React.FC = () => {
     return preferences && JSON.parse(preferences).genres && JSON.parse(preferences).genres.length > 0;
   };
 
+  // Get user reading goals from localStorage
+  const getUserGoals = () => {
+    try {
+      const preferences = localStorage.getItem('focusreads-preferences');
+      if (preferences) {
+        const parsed = JSON.parse(preferences);
+        return parsed.readingGoals || [];
+      }
+    } catch (error) {
+      console.error('Error parsing preferences:', error);
+    }
+    return [];
+  };
+
+  const userGoals = getUserGoals();
+
+  // Reading goal categories with icons
+  const readingGoalCategories = {
+    'Personal Growth & Development': {
+      icon: <Target className="w-4 h-4" />,
+      color: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300',
+      goals: [
+        'Learn New Skills or Knowledge',
+        'Improve Mental Health',
+        'Develop Empathy and Understanding',
+        'Establish a Reading Habit'
+      ]
+    },
+    'Entertainment & Enjoyment': {
+      icon: <Heart className="w-4 h-4" />,
+      color: 'bg-pink-100 dark:bg-pink-900/30 text-pink-700 dark:text-pink-300',
+      goals: [
+        'Escape into a Different World',
+        'Discover New Authors or Genres',
+        'Set a Reading Target',
+        'Joined A Book Club'
+      ]
+    },
+    'Intellectual Curiosity': {
+      icon: <Lightbulb className="w-4 h-4" />,
+      color: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300',
+      goals: [
+        'Explore New Topics or Subjects',
+        'Stay Informed on Current Events',
+        'Enhance Critical Thinking',
+        'Read Classic Literature'
+      ]
+    },
+    'Social & Community': {
+      icon: <Globe className="w-4 h-4" />,
+      color: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300',
+      goals: [
+        'Connect with Others Through Reading',
+        'Support Literacy and Education',
+        'Read with a Child or Young Adult',
+        'Participate in Reading Challenges'
+      ]
+    },
+    'Personal Achievement': {
+      icon: <Trophy className="w-4 h-4" />,
+      color: 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300',
+      goals: [
+        'Set Page or Word Goals',
+        'Finish a Long or Challenging Book',
+        'Read Outside Your Comfort Zone',
+        'Track Reading Progress'
+      ]
+    }
+  };
+
+  const getGoalCategory = (goal: string) => {
+    for (const [categoryName, category] of Object.entries(readingGoalCategories)) {
+      if (category.goals.includes(goal)) {
+        return { name: categoryName, ...category };
+      }
+    }
+    return null;
+  };
+
   useEffect(() => {
     const savedBooks = JSON.parse(localStorage.getItem('focusreads-books') || '[]');
     setBooks(savedBooks);
@@ -50,12 +130,32 @@ const Books: React.FC = () => {
       return matchesSearch && matchesStatus;
     });
 
+    // Remove duplicates based on ISBN or title+author, keeping the most recent
+    const uniqueBooks = filtered.reduce((acc, book) => {
+      const key = book.isbn || `${book.title}-${book.author}`;
+      const existing = acc.find(b => (b.isbn && b.isbn === book.isbn) || 
+                                    (!b.isbn && !book.isbn && b.title === book.title && b.author === book.author));
+      
+      if (!existing) {
+        acc.push(book);
+      } else {
+        // Keep the one with the most recent dateAdded
+        const existingDate = new Date(existing.dateAdded || 0);
+        const currentDate = new Date(book.dateAdded || 0);
+        if (currentDate > existingDate) {
+          const index = acc.indexOf(existing);
+          acc[index] = book;
+        }
+      }
+      return acc;
+    }, [] as Book[]);
+
     // Sort alphabetically by title when showing all books
     if (statusFilter === 'all') {
-      filtered = filtered.sort((a, b) => a.title.localeCompare(b.title));
+      uniqueBooks.sort((a, b) => a.title.localeCompare(b.title));
     }
 
-    setFilteredBooks(filtered);
+    setFilteredBooks(uniqueBooks);
   };
 
   const saveBooks = (updatedBooks: Book[]) => {
@@ -257,11 +357,12 @@ const Books: React.FC = () => {
   };
 
   const getBookCounts = () => {
+    // Use filtered books to get accurate counts without duplicates
     return {
-      total: books.length,
-      reading: books.filter(b => b.status === 'reading').length,
-      completed: books.filter(b => b.status === 'completed').length,
-      wantToRead: books.filter(b => b.status === 'want-to-read').length
+      total: filteredBooks.length,
+      reading: filteredBooks.filter(b => b.status === 'reading').length,
+      completed: filteredBooks.filter(b => b.status === 'completed').length,
+      wantToRead: filteredBooks.filter(b => b.status === 'want-to-read').length
     };
   };
 
@@ -287,6 +388,17 @@ const Books: React.FC = () => {
           </div>
           
           <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-3 sm:space-y-0 sm:space-x-3 mt-4 sm:mt-0">
+            {/* Recently Viewed Button */}
+            {RecentlyViewedService.hasRecentBooks() && (
+              <Link
+                to="/recently-viewed"
+                className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-medium transition-colors inline-flex items-center space-x-2"
+              >
+                <Eye className="w-4 h-4" />
+                <span>Recently Viewed ({RecentlyViewedService.getBookCount()})</span>
+              </Link>
+            )}
+            
             {/* Update Recommendations Button */}
             {hasCompletedSurvey() && (
               <Link
@@ -367,6 +479,41 @@ const Books: React.FC = () => {
                   <span>Take Survey (2 minutes)</span>
                 </Link>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Reading Goals Section */}
+        {userGoals.length > 0 && (
+          <div className="mb-8 themed-card rounded-lg shadow-lg p-6">
+            <div className="flex items-center space-x-2 mb-4">
+              <Target className="w-5 h-5 theme-primary-text" />
+              <h2 className="text-lg font-semibold theme-text">Your Reading Goals</h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {userGoals.map((goal, index) => {
+                const category = getGoalCategory(goal);
+                return (
+                  <div
+                    key={index}
+                    className={`p-3 rounded-lg border ${category ? category.color : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'}`}
+                  >
+                    <div className="flex items-center space-x-2">
+                      {category?.icon}
+                      <span className="text-sm font-medium">{goal}</span>
+                    </div>
+                    {category && (
+                      <div className="text-xs opacity-75 mt-1">{category.name}</div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+              <p className="text-sm text-blue-800 dark:text-blue-200">
+                <strong>Tip:</strong> These goals help guide your reading journey. 
+                Add books that align with your objectives to make meaningful progress.
+              </p>
             </div>
           </div>
         )}

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, ExternalLink, Plus, Star, Clock, User } from 'lucide-react';
 import { AmazonBooksService, AmazonBook } from '../services/amazonBooks';
+import { RecentlyViewedService } from '../services/recentlyViewed';
 
 const BookSample: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -22,6 +23,17 @@ const BookSample: React.FC = () => {
         const bookData = await AmazonBooksService.getBookById(id);
         if (bookData) {
           setBook(bookData);
+          
+          // Add to recently viewed when sample is loaded
+          RecentlyViewedService.addBook({
+            id: bookData.id,
+            title: bookData.title,
+            author: bookData.author,
+            cover: bookData.cover,
+            genre: bookData.genre,
+            rating: bookData.rating,
+            amazonUrl: bookData.amazonUrl
+          }, 'sample-read');
         } else {
           setError('Book not found');
         }

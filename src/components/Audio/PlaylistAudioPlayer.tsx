@@ -33,6 +33,50 @@ const PlaylistAudioPlayer: React.FC<PlaylistAudioPlayerProps> = ({ onClose }) =>
 
   const currentTrack = playlist[currentTrackIndex];
 
+  // Load saved playlist and state on mount
+  useEffect(() => {
+    const savedPlaylist = localStorage.getItem('focusreads-playlist');
+    const savedState = localStorage.getItem('focusreads-playlist-state');
+    
+    if (savedPlaylist) {
+      try {
+        const playlistData = JSON.parse(savedPlaylist);
+        // Note: We can't restore File objects from localStorage, so we'll just show the structure
+        // In a real app, you'd need a more sophisticated approach for persistent audio files
+      } catch (error) {
+        console.error('Error loading saved playlist:', error);
+      }
+    }
+    
+    if (savedState) {
+      try {
+        const state = JSON.parse(savedState);
+        setCurrentTrackIndex(state.currentTrackIndex || 0);
+        setVolume(state.volume || 1);
+        setPlaybackRate(state.playbackRate || 1);
+        setRepeatMode(state.repeatMode || 'none');
+        setIsShuffled(state.isShuffled || false);
+      } catch (error) {
+        console.error('Error loading saved state:', error);
+      }
+    }
+  }, []);
+
+  // Save playlist state when it changes
+  useEffect(() => {
+    if (playlist.length > 0) {
+      const state = {
+        currentTrackIndex,
+        volume,
+        playbackRate,
+        repeatMode,
+        isShuffled,
+        currentTime: audioRef.current?.currentTime || 0
+      };
+      localStorage.setItem('focusreads-playlist-state', JSON.stringify(state));
+    }
+  }, [currentTrackIndex, volume, playbackRate, repeatMode, isShuffled]);
+
   useEffect(() => {
     if (currentTrack && audioRef.current) {
       const url = URL.createObjectURL(currentTrack.file);
@@ -302,6 +346,15 @@ const PlaylistAudioPlayer: React.FC<PlaylistAudioPlayerProps> = ({ onClose }) =>
     setDraggedIndex(index);
   };
 
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+    };
+  }, []);
+
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-600 p-6 max-w-4xl w-full">
       <audio ref={audioRef} preload="metadata" />
@@ -317,7 +370,7 @@ const PlaylistAudioPlayer: React.FC<PlaylistAudioPlayerProps> = ({ onClose }) =>
               Focus Music Playlist
             </h3>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              {playlist.length} track{playlist.length !== 1 ? 's' : ''}
+              {playlist.length} track{playlist.length !== 1 ? 's' : ''} • Persistent across pages
             </p>
           </div>
         </div>
@@ -460,7 +513,7 @@ const PlaylistAudioPlayer: React.FC<PlaylistAudioPlayerProps> = ({ onClose }) =>
                     
                     <button
                       onClick={toggleRepeat}
-                      className={`p-2 rounded-full transition-colors ${
+                      className={`p-2 rounded-full transition-colors relative ${
                         repeatMode !== 'none'
                           ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400' 
                           : 'bg-gray-100 dark:bg-gray-600 hover:bg-gray-200 dark:hover:bg-gray-500 text-gray-600 dark:text-gray-400'

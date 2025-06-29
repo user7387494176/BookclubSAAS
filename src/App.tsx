@@ -14,6 +14,7 @@ import FocusMode from './pages/FocusMode';
 import Notes from './pages/Notes';
 import Books from './pages/Books';
 import Settings from './pages/Settings';
+import RecentlyViewed from './pages/RecentlyViewed';
 
 function App() {
   return (
@@ -32,6 +33,7 @@ function App() {
                 <Route path="notes" element={<Notes />} />
                 <Route path="books" element={<Books />} />
                 <Route path="settings" element={<Settings />} />
+                <Route path="recently-viewed" element={<RecentlyViewed />} />
               </Route>
             </Routes>
             <PomodoroWidget />
