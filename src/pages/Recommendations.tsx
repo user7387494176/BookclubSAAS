@@ -471,7 +471,7 @@ const Recommendations: React.FC = () => {
           </div>
         )}
 
-        {/* Books Grid */}
+        {/* Books Grid - Enhanced with larger covers */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {books.map((book) => (
             <div key={book.id} className="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 relative group">
@@ -488,7 +488,11 @@ const Recommendations: React.FC = () => {
                 <img
                   src={book.cover}
                   alt={book.title}
-                  className="w-full h-64 object-cover"
+                  className="w-full h-80 object-cover"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(book.title)}&background=4F46E5&color=fff&size=400`;
+                  }}
                 />
                 <div className="absolute top-4 right-4 flex flex-col space-y-2">
                   {userPreferences && (

@@ -188,9 +188,8 @@ const Notes: React.FC = () => {
     return [...new Set(allTags)];
   };
 
-  const getBookTitle = (bookId: string) => {
-    const book = books.find(b => b.id === bookId);
-    return book ? book.title : 'Unknown Book';
+  const getBookById = (bookId: string) => {
+    return books.find(b => b.id === bookId);
   };
 
   const filteredNotes = notes.filter(note => {
@@ -377,53 +376,95 @@ const Notes: React.FC = () => {
 
         {/* Notes Grid */}
         {filteredNotes.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredNotes.map(note => (
-              <div key={note.id} className="themed-card rounded-lg shadow-lg p-6 hover:shadow-xl transition-shadow">
-                <div className="flex justify-between items-start mb-4">
-                  <div className="flex items-center space-x-2 text-sm theme-text-secondary">
-                    <BookOpen className="w-4 h-4" />
-                    <span className="font-medium">{getBookTitle(note.bookId)}</span>
-                  </div>
-                  <div className="flex space-x-2">
-                    <button
-                      onClick={() => handleEditNote(note)}
-                      className="p-1 theme-text-secondary hover:theme-primary-text transition-colors"
-                    >
-                      <Edit3 className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDeleteNote(note.id)}
-                      className="p-1 theme-text-secondary hover:text-red-600 dark:hover:text-red-400 transition-colors"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+            {filteredNotes.map(note => {
+              const book = getBookById(note.bookId);
+              return (
+                <div key={note.id} className="themed-card rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
+                  {/* Book Header with Cover */}
+                  {book && (
+                    <div className="bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 p-4 border-b theme-border">
+                      <div className="flex items-start space-x-4">
+                        <img
+                          src={book.cover || `https://ui-avatars.com/api/?name=${encodeURIComponent(book.title)}&background=4F46E5&color=fff&size=120`}
+                          alt={book.title}
+                          className="w-16 h-20 object-cover rounded-lg shadow-md flex-shrink-0"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(book.title)}&background=4F46E5&color=fff&size=120`;
+                          }}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-semibold theme-text text-sm line-clamp-2 mb-1">
+                            {book.title}
+                          </h4>
+                          <p className="text-xs theme-text-secondary mb-1">
+                            by {book.author}
+                          </p>
+                          {book.isbn && (
+                            <p className="text-xs theme-text-secondary font-mono">
+                              ISBN: {book.isbn}
+                            </p>
+                          )}
+                          {book.genre && (
+                            <span className="inline-block mt-1 px-2 py-1 text-xs rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300">
+                              {book.genre}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="p-6">
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="flex items-center space-x-2 text-sm theme-text-secondary">
+                        <BookOpen className="w-4 h-4" />
+                        <span className="font-medium">
+                          {book ? book.title : 'Unknown Book'}
+                        </span>
+                      </div>
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={() => handleEditNote(note)}
+                          className="p-1 theme-text-secondary hover:theme-primary-text transition-colors"
+                        >
+                          <Edit3 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteNote(note.id)}
+                          className="p-1 theme-text-secondary hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <p className="theme-text mb-4 line-clamp-4">
+                      {note.content}
+                    </p>
+
+                    {note.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mb-4">
+                        {note.tags.map(tag => (
+                          <span
+                            key={tag}
+                            className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="flex items-center text-xs theme-text-secondary">
+                      <Calendar className="w-3 h-3 mr-1" />
+                      <span>{new Date(note.createdAt).toLocaleDateString()}</span>
+                    </div>
                   </div>
                 </div>
-
-                <p className="theme-text mb-4 line-clamp-4">
-                  {note.content}
-                </p>
-
-                {note.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mb-4">
-                    {note.tags.map(tag => (
-                      <span
-                        key={tag}
-                        className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300"
-                      >
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                )}
-
-                <div className="flex items-center text-xs theme-text-secondary">
-                  <Calendar className="w-3 h-3 mr-1" />
-                  <span>{new Date(note.createdAt).toLocaleDateString()}</span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : books.length > 0 ? (
           <div className="text-center py-12">
@@ -466,7 +507,7 @@ const Notes: React.FC = () => {
                   >
                     <option value="">Select a book</option>
                     {books.map(book => (
-                      <option key={book.id} value={book.id}>{book.title}</option>
+                      <option key={book.id} value={book.id}>{book.title} by {book.author}</option>
                     ))}
                   </select>
                 </div>

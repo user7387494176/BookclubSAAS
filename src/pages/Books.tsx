@@ -466,7 +466,7 @@ const Books: React.FC = () => {
           )}
         </div>
 
-        {/* Books Grid */}
+        {/* Books Grid - Enhanced with larger covers */}
         {filteredBooks.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {filteredBooks.map(book => (
@@ -475,7 +475,11 @@ const Books: React.FC = () => {
                   <img
                     src={book.cover || `https://ui-avatars.com/api/?name=${encodeURIComponent(book.title)}&background=4F46E5&color=fff&size=400`}
                     alt={book.title}
-                    className="w-full h-48 object-cover"
+                    className="w-full h-72 object-cover"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(book.title)}&background=4F46E5&color=fff&size=400`;
+                    }}
                   />
                   <div className="absolute top-3 right-3">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(book.status || 'want-to-read')}`}>
@@ -488,7 +492,13 @@ const Books: React.FC = () => {
                   <h3 className="text-lg font-semibold theme-text mb-1 line-clamp-2">
                     {book.title}
                   </h3>
-                  <p className="theme-text-secondary mb-3">by {book.author}</p>
+                  <p className="theme-text-secondary mb-2">by {book.author}</p>
+                  
+                  {book.isbn && (
+                    <p className="text-xs theme-text-secondary font-mono mb-2">
+                      ISBN: {book.isbn}
+                    </p>
+                  )}
 
                   {book.tags && book.tags.length > 0 && (
                     <div className="flex flex-wrap gap-1 mb-3">
