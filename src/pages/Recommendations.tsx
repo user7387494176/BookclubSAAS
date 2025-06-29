@@ -61,6 +61,12 @@ const Recommendations: React.FC = () => {
     const preferences = localStorage.getItem('focusreads-preferences');
     if (preferences) {
       const parsedPreferences: UserPreferences = JSON.parse(preferences);
+      
+      // Ensure genres is always an array
+      if (!parsedPreferences.genres || !Array.isArray(parsedPreferences.genres)) {
+        parsedPreferences.genres = [];
+      }
+      
       setUserPreferences(parsedPreferences);
       setIsTrendingMode(false);
       
@@ -93,13 +99,13 @@ const Recommendations: React.FC = () => {
       
       if (userPreferences && selectedGenre === 'all') {
         // Load books based on user preferences and mood
-        let targetGenres = [...userPreferences.genres];
+        let targetGenres = [...(userPreferences.genres || [])];
         
         // Prioritize mood-based genres
         if (userPreferences.mood && moodGenreMapping[userPreferences.mood as keyof typeof moodGenreMapping]) {
           const moodGenres = moodGenreMapping[userPreferences.mood as keyof typeof moodGenreMapping];
           // Put mood genres first, then user selected genres
-          targetGenres = [...moodGenres, ...userPreferences.genres.filter(g => !moodGenres.includes(g))];
+          targetGenres = [...moodGenres, ...(userPreferences.genres || []).filter(g => !moodGenres.includes(g))];
         }
         
         // Get books from each genre
