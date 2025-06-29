@@ -52,42 +52,16 @@ export class ISBNLookupService {
         throw new Error('Invalid ISBN format');
       }
 
-      // Use Open Library API as primary source (more reliable, no CORS issues)
+      // Use Open Library API as primary source
       const openLibraryResult = await this.lookupWithOpenLibrary(normalizedISBN);
       if (openLibraryResult) {
         return openLibraryResult;
       }
 
-      // Fallback to isbnsearch.org only if Open Library fails
-      try {
-        const response = await fetch(`https://isbnsearch.org/isbn/${normalizedISBN}`);
-        
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const data = await response.json();
-        
-        if (data && data.title) {
-          return {
-            title: data.title || 'Unknown Title',
-            author: data.author || 'Unknown Author',
-            cover: data.image || this.generateCoverUrl(data.title || 'Unknown Title'),
-            isbn: this.formatISBN(normalizedISBN),
-            publishDate: data.date_published || data.year || '',
-            genre: data.subjects?.[0] || '',
-            description: data.synopsis || data.overview || '',
-            tags: data.subjects || [],
-            amazonUrl: data.amazon_url || `https://www.amazon.com/s?k=${normalizedISBN}&i=stripbooks`,
-            price: data.msrp || '',
-            publisher: data.publisher || '',
-            language: data.language || 'English',
-            pages: data.pages ? parseInt(data.pages) : undefined
-          };
-        }
-      } catch (isbnSearchError) {
-        console.warn('isbnsearch.org lookup failed (likely CORS):', isbnSearchError);
-        // Continue to return null if both APIs fail
+      // Fallback to Google Books API
+      const googleBooksResult = await this.lookupWithGoogleBooks(normalizedISBN);
+      if (googleBooksResult) {
+        return googleBooksResult;
       }
       
       return null;
@@ -132,6 +106,42 @@ export class ISBNLookupService {
       return null;
     } catch (error) {
       console.error('Open Library lookup failed:', error);
+      return null;
+    }
+  }
+
+  private static async lookupWithGoogleBooks(isbn: string): Promise<ISBNBookData | null> {
+    try {
+      const response = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      if (data.items && data.items.length > 0) {
+        const book = data.items[0].volumeInfo;
+        
+        return {
+          title: book.title || 'Unknown Title',
+          author: book.authors?.join(', ') || 'Unknown Author',
+          cover: book.imageLinks?.large || book.imageLinks?.medium || book.imageLinks?.thumbnail || this.generateCoverUrl(book.title || 'Unknown Title'),
+          isbn: this.formatISBN(isbn),
+          publishDate: book.publishedDate || '',
+          genre: book.categories?.[0] || '',
+          description: book.description || '',
+          tags: book.categories || [],
+          amazonUrl: `https://www.amazon.com/s?k=${isbn}&i=stripbooks`,
+          publisher: book.publisher || '',
+          language: book.language || 'English',
+          pages: book.pageCount
+        };
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Google Books lookup failed:', error);
       return null;
     }
   }

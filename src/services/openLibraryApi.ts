@@ -1,4 +1,4 @@
-// Open Library API service for real book data
+// Enhanced Open Library API service with ISBN lookup integration
 export interface OpenLibraryBook {
   key: string;
   title: string;
@@ -37,47 +37,47 @@ export class OpenLibraryService {
   private static readonly BASE_URL = 'https://openlibrary.org';
   private static readonly COVERS_URL = 'https://covers.openlibrary.org/b';
 
-  // Genre mapping to Open Library subjects
+  // Enhanced genre mapping with more comprehensive coverage
   private static readonly GENRE_MAPPING: Record<string, string[]> = {
-    'fiction': ['fiction', 'novels', 'literature'],
-    'mystery-thriller': ['mystery', 'thriller', 'detective', 'crime', 'suspense'],
-    'romance': ['romance', 'love stories', 'romantic fiction'],
-    'science-fiction-fantasy': ['science fiction', 'fantasy', 'sci-fi', 'speculative fiction'],
-    'self-help': ['self-help', 'personal development', 'psychology', 'motivation'],
-    'business-investing': ['business', 'economics', 'finance', 'investing', 'entrepreneurship'],
-    'health-wellness': ['health', 'wellness', 'fitness', 'nutrition', 'medicine'],
-    'biographies-memoirs': ['biography', 'memoir', 'autobiography', 'life stories'],
-    'history': ['history', 'historical', 'world history', 'american history'],
-    'science-math': ['science', 'mathematics', 'physics', 'chemistry', 'biology'],
-    'education-reference': ['education', 'reference', 'textbooks', 'academic'],
-    'arts-music': ['art', 'music', 'photography', 'design', 'creativity'],
-    'cooking-food-wine': ['cooking', 'food', 'recipes', 'culinary', 'wine'],
-    'travel': ['travel', 'geography', 'adventure', 'exploration'],
-    'religion-spirituality': ['religion', 'spirituality', 'philosophy', 'theology'],
-    'politics-social-sciences': ['politics', 'sociology', 'social science', 'government'],
-    'young-adult': ['young adult', 'teen', 'coming of age', 'ya fiction'],
-    'childrens-books': ['children', 'juvenile', 'kids', 'picture books'],
-    'humor': ['humor', 'comedy', 'funny', 'satire'],
-    'psychology': ['psychology', 'mental health', 'cognitive science'],
-    'crafts-hobbies': ['crafts', 'hobbies', 'diy', 'making'],
-    'computers-technology': ['computers', 'technology', 'programming', 'software'],
-    'lgbtq-books': ['lgbtq', 'gay', 'lesbian', 'transgender', 'queer'],
-    'action-adventure': ['adventure', 'action', 'thriller', 'excitement'],
-    'outdoor-sports': ['sports', 'outdoor', 'recreation', 'athletics'],
-    'parenting-relationships': ['parenting', 'relationships', 'family', 'marriage'],
-    'pets': ['pets', 'animals', 'dogs', 'cats'],
-    'medical': ['medical', 'medicine', 'health care', 'nursing']
+    'fiction': ['fiction', 'novels', 'literature', 'literary fiction'],
+    'mystery-thriller': ['mystery', 'thriller', 'detective', 'crime', 'suspense', 'police procedural'],
+    'romance': ['romance', 'love stories', 'romantic fiction', 'contemporary romance'],
+    'science-fiction-fantasy': ['science fiction', 'fantasy', 'sci-fi', 'speculative fiction', 'dystopian', 'space opera'],
+    'self-help': ['self-help', 'personal development', 'psychology', 'motivation', 'self improvement'],
+    'business-investing': ['business', 'economics', 'finance', 'investing', 'entrepreneurship', 'management'],
+    'health-wellness': ['health', 'wellness', 'fitness', 'nutrition', 'medicine', 'mental health'],
+    'biographies-memoirs': ['biography', 'memoir', 'autobiography', 'life stories', 'personal narratives'],
+    'history': ['history', 'historical', 'world history', 'american history', 'ancient history'],
+    'science-math': ['science', 'mathematics', 'physics', 'chemistry', 'biology', 'astronomy'],
+    'education-reference': ['education', 'reference', 'textbooks', 'academic', 'study guides'],
+    'arts-music': ['art', 'music', 'photography', 'design', 'creativity', 'visual arts'],
+    'cooking-food-wine': ['cooking', 'food', 'recipes', 'culinary', 'wine', 'baking'],
+    'travel': ['travel', 'geography', 'adventure', 'exploration', 'guidebooks'],
+    'religion-spirituality': ['religion', 'spirituality', 'philosophy', 'theology', 'meditation'],
+    'politics-social-sciences': ['politics', 'sociology', 'social science', 'government', 'anthropology'],
+    'young-adult': ['young adult', 'teen', 'coming of age', 'ya fiction', 'teenage'],
+    'childrens-books': ['children', 'juvenile', 'kids', 'picture books', 'early readers'],
+    'humor': ['humor', 'comedy', 'funny', 'satire', 'wit'],
+    'psychology': ['psychology', 'mental health', 'cognitive science', 'behavioral science'],
+    'crafts-hobbies': ['crafts', 'hobbies', 'diy', 'making', 'handicrafts'],
+    'computers-technology': ['computers', 'technology', 'programming', 'software', 'internet'],
+    'lgbtq-books': ['lgbtq', 'gay', 'lesbian', 'transgender', 'queer', 'gender studies'],
+    'action-adventure': ['adventure', 'action', 'thriller', 'excitement', 'suspense'],
+    'outdoor-sports': ['sports', 'outdoor', 'recreation', 'athletics', 'fitness'],
+    'parenting-relationships': ['parenting', 'relationships', 'family', 'marriage', 'child care'],
+    'pets': ['pets', 'animals', 'dogs', 'cats', 'veterinary'],
+    'medical': ['medical', 'medicine', 'health care', 'nursing', 'anatomy']
   };
 
-  static async getBooksByGenre(genre: string, limit: number = 8): Promise<BookData[]> {
+  static async getBooksByGenre(genre: string, limit: number = 20): Promise<BookData[]> {
     try {
       const subjects = this.GENRE_MAPPING[genre.toLowerCase()] || [genre];
       const allBooks: BookData[] = [];
       
       // Try multiple subjects to get variety
-      for (const subject of subjects.slice(0, 3)) {
+      for (const subject of subjects.slice(0, 4)) {
         try {
-          const url = `${this.BASE_URL}/subjects/${encodeURIComponent(subject)}.json?limit=${Math.ceil(limit / subjects.length)}&offset=${Math.floor(Math.random() * 100)}`;
+          const url = `${this.BASE_URL}/subjects/${encodeURIComponent(subject)}.json?limit=${Math.ceil(limit / subjects.length)}&offset=${Math.floor(Math.random() * 200)}`;
           const response = await fetch(url);
           
           if (response.ok) {
@@ -101,9 +101,9 @@ export class OpenLibraryService {
     }
   }
 
-  static async searchBooks(query: string, limit: number = 8): Promise<BookData[]> {
+  static async searchBooks(query: string, limit: number = 20): Promise<BookData[]> {
     try {
-      const url = `${this.BASE_URL}/search.json?q=${encodeURIComponent(query)}&limit=${limit}&offset=${Math.floor(Math.random() * 50)}`;
+      const url = `${this.BASE_URL}/search.json?q=${encodeURIComponent(query)}&limit=${limit}&offset=${Math.floor(Math.random() * 100)}`;
       const response = await fetch(url);
       
       if (!response.ok) {
@@ -150,11 +150,11 @@ export class OpenLibraryService {
   static async getRandomBooksByGenre(genre: string, excludeIds: string[] = []): Promise<BookData[]> {
     try {
       // Get books with random offset
-      const offset = Math.floor(Math.random() * 200);
+      const offset = Math.floor(Math.random() * 500);
       const subjects = this.GENRE_MAPPING[genre.toLowerCase()] || [genre];
       const subject = subjects[Math.floor(Math.random() * subjects.length)];
       
-      const url = `${this.BASE_URL}/subjects/${encodeURIComponent(subject)}.json?limit=20&offset=${offset}`;
+      const url = `${this.BASE_URL}/subjects/${encodeURIComponent(subject)}.json?limit=30&offset=${offset}`;
       const response = await fetch(url);
       
       if (!response.ok) {
@@ -167,9 +167,9 @@ export class OpenLibraryService {
       // Filter out excluded books
       const filtered = books.filter(book => !excludeIds.includes(book.id));
       
-      // Shuffle and return up to 4 books
+      // Shuffle and return up to 6 books
       const shuffled = filtered.sort(() => 0.5 - Math.random());
-      return shuffled.slice(0, 4);
+      return shuffled.slice(0, 6);
     } catch (error) {
       console.error('Error getting random books:', error);
       return [];
@@ -179,10 +179,10 @@ export class OpenLibraryService {
   private static async processBooks(works: any[], genre: string): Promise<BookData[]> {
     const books: BookData[] = [];
     
-    for (const work of works.slice(0, 20)) {
+    for (const work of works.slice(0, 30)) {
       try {
         const book = await this.convertToBookData(work, null, genre);
-        if (book) {
+        if (book && book.isbn) {
           books.push(book);
         }
       } catch (error) {
@@ -215,11 +215,26 @@ export class OpenLibraryService {
         isbn = work.isbn[0];
       }
 
-      // Get cover image
+      // Skip books without ISBN for better data quality
+      if (!isbn) return null;
+
+      // Try to get enhanced data from ISBN lookup
+      let enhancedCover = '';
+      try {
+        const { ISBNLookupService } = await import('./isbnLookup');
+        const isbnData = await ISBNLookupService.lookupByISBN(isbn);
+        if (isbnData && isbnData.cover) {
+          enhancedCover = isbnData.cover;
+        }
+      } catch (error) {
+        console.warn('ISBN lookup failed for', isbn, error);
+      }
+
+      // Get cover image - prefer ISBN lookup result
       const coverId = work.cover_i || edition?.covers?.[0];
-      const cover = coverId 
-        ? `${this.COVERS_URL}/id/${coverId}-L.jpg`
-        : `https://ui-avatars.com/api/?name=${encodeURIComponent(title.substring(0, 20))}&background=4F46E5&color=fff&size=400&bold=true`;
+      const cover = enhancedCover || 
+        (coverId ? `${this.COVERS_URL}/id/${coverId}-L.jpg` : 
+        `https://ui-avatars.com/api/?name=${encodeURIComponent(title.substring(0, 20))}&background=4F46E5&color=fff&size=400&bold=true`);
 
       // Get publication year
       const publishYear = work.first_publish_year || edition?.publish_date || '';
@@ -238,9 +253,7 @@ export class OpenLibraryService {
       }
 
       // Generate Amazon URL
-      const amazonUrl = isbn 
-        ? `https://www.amazon.com/s?k=${isbn}&i=stripbooks&ref=nb_sb_noss`
-        : `https://www.amazon.com/s?k=${encodeURIComponent(title + ' ' + author)}&i=stripbooks&ref=nb_sb_noss`;
+      const amazonUrl = `https://www.amazon.com/s?k=${isbn}&i=stripbooks&ref=nb_sb_noss`;
 
       // Generate sample text
       const sampleText = this.generateSampleText(title, author, description);
@@ -254,7 +267,7 @@ export class OpenLibraryService {
         title,
         author,
         cover,
-        isbn,
+        isbn: this.formatISBN(isbn),
         publishDate,
         genre: detectedGenre,
         audience: 'Adult',
@@ -270,6 +283,21 @@ export class OpenLibraryService {
       console.error('Error converting work to book data:', error);
       return null;
     }
+  }
+
+  private static formatISBN(isbn: string): string {
+    // Remove all non-digit characters
+    const digits = isbn.replace(/[^\d]/g, '');
+    
+    if (digits.length === 13) {
+      // Format as ISBN-13: 978-0-123-45678-9
+      return `${digits.slice(0, 3)}-${digits.slice(3, 4)}-${digits.slice(4, 7)}-${digits.slice(7, 12)}-${digits.slice(12)}`;
+    } else if (digits.length === 10) {
+      // Format as ISBN-10: 0-123-45678-9
+      return `${digits.slice(0, 1)}-${digits.slice(1, 4)}-${digits.slice(4, 9)}-${digits.slice(9)}`;
+    }
+    
+    return isbn;
   }
 
   private static detectGenre(subjects: string[]): string | null {
@@ -330,5 +358,15 @@ export class OpenLibraryService {
 
   static getAllGenres(): string[] {
     return Object.keys(this.GENRE_MAPPING).map(genre => this.formatGenre(genre));
+  }
+
+  static getAvailableGenres(books: BookData[]): string[] {
+    const genres = new Set<string>();
+    books.forEach(book => {
+      if (book.genre) {
+        genres.add(book.genre);
+      }
+    });
+    return Array.from(genres).sort();
   }
 }

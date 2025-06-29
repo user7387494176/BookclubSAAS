@@ -115,11 +115,48 @@ const Books: React.FC = () => {
     const savedBooks = JSON.parse(localStorage.getItem('focusreads-books') || '[]');
     setBooks(savedBooks);
     setFilteredBooks(savedBooks);
+    
+    // Perform ISBN lookup for books without proper covers
+    enhanceBooksWithISBNData(savedBooks);
   }, []);
 
   useEffect(() => {
     filterAndSortBooks();
   }, [books, searchTerm, statusFilter]);
+
+  const enhanceBooksWithISBNData = async (bookList: Book[]) => {
+    const booksToUpdate: Book[] = [];
+    
+    for (const book of bookList) {
+      if (book.isbn && (!book.cover || book.cover.includes('ui-avatars.com'))) {
+        try {
+          const isbnData = await ISBNLookupService.lookupByISBN(book.isbn);
+          if (isbnData && isbnData.cover && !isbnData.cover.includes('ui-avatars.com')) {
+            const updatedBook = {
+              ...book,
+              cover: isbnData.cover,
+              description: book.description || isbnData.description,
+              genre: book.genre || isbnData.genre,
+              tags: book.tags?.length ? book.tags : isbnData.tags
+            };
+            booksToUpdate.push(updatedBook);
+          }
+        } catch (error) {
+          console.warn('Failed to enhance book with ISBN data:', book.isbn, error);
+        }
+      }
+    }
+    
+    if (booksToUpdate.length > 0) {
+      const updatedBooks = bookList.map(book => {
+        const updated = booksToUpdate.find(b => b.id === book.id);
+        return updated || book;
+      });
+      
+      setBooks(updatedBooks);
+      localStorage.setItem('focusreads-books', JSON.stringify(updatedBooks));
+    }
+  };
 
   const filterAndSortBooks = () => {
     let filtered = books.filter(book => {
@@ -613,7 +650,7 @@ const Books: React.FC = () => {
           )}
         </div>
 
-        {/* Books Grid - Enhanced with larger covers */}
+        {/* Books Grid - Enhanced with larger covers and ISBN display */}
         {filteredBooks.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {filteredBooks.map(book => (
@@ -642,7 +679,7 @@ const Books: React.FC = () => {
                   <p className="theme-text-secondary mb-2">by {book.author}</p>
                   
                   {book.isbn && (
-                    <p className="text-xs theme-text-secondary font-mono mb-2">
+                    <p className="text-xs theme-text-secondary font-mono mb-2 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">
                       ISBN: {book.isbn}
                     </p>
                   )}
@@ -869,7 +906,7 @@ const Books: React.FC = () => {
                     className="w-full px-3 py-2 themed-input rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                   />
                   <p className="text-xs theme-text-secondary mt-1">
-                    Leave empty to use a generated cover
+                    Leave empty to use a generated cover (ISBN lookup will auto-populate this)
                   </p>
                 </div>
 

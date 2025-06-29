@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { ExternalLink, ShoppingCart, Heart, Star, BookOpen, Check, RefreshCw, Settings, Target, Download, Upload, TrendingUp, Volume2, VolumeX, Eye } from 'lucide-react';
 import { AmazonBooksService, AmazonBook } from '../services/amazonBooks';
 import { RecentlyViewedService } from '../services/recentlyViewed';
+import { AudioService } from '../services/audioService';
+import { OpenLibraryService } from '../services/openLibraryApi';
 
 interface UserPreferences {
   genres: string[];
@@ -23,6 +25,7 @@ const Recommendations: React.FC = () => {
   const [isTrendingMode, setIsTrendingMode] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [displayedBooks, setDisplayedBooks] = useState<Set<string>>(new Set());
+  const [animatingBooks, setAnimatingBooks] = useState<Set<string>>(new Set());
 
   // Trending genres when no survey is completed
   const trendingGenres = [
@@ -33,7 +36,14 @@ const Recommendations: React.FC = () => {
     'Self Help',
     'Business & Investing',
     'Health & Wellness',
-    'Biographies & Memoirs'
+    'Biographies & Memoirs',
+    'History',
+    'Science & Math',
+    'Young Adult',
+    'Humor',
+    'Arts & Music',
+    'Travel',
+    'Cooking Food & Wine'
   ];
 
   // Mood-based genre mapping for enhanced recommendations
@@ -49,6 +59,7 @@ const Recommendations: React.FC = () => {
 
   useEffect(() => {
     loadUserPreferences();
+    loadAudioSettings();
   }, []);
 
   useEffect(() => {
@@ -97,6 +108,11 @@ const Recommendations: React.FC = () => {
     }
   };
 
+  const loadAudioSettings = () => {
+    const settings = AudioService.getSettings();
+    setSoundEnabled(settings.soundEnabled);
+  };
+
   const loadBooks = async () => {
     setLoading(true);
     try {
@@ -115,7 +131,7 @@ const Recommendations: React.FC = () => {
         
         // Get books from each genre
         const allBooks: AmazonBook[] = [];
-        const booksPerGenre = Math.ceil(12 / Math.min(targetGenres.length, 4)); // Get more books initially
+        const booksPerGenre = Math.ceil(20 / Math.min(targetGenres.length, 4)); // Get more books initially
         
         for (const genre of targetGenres.slice(0, 4)) {
           const genreKey = genre.toLowerCase().replace(/\s+/g, '-').replace(/&/g, '');
@@ -127,11 +143,11 @@ const Recommendations: React.FC = () => {
         const uniqueBooks = removeDuplicates(allBooks);
         const newBooks = uniqueBooks.filter(book => !displayedBooks.has(book.id));
         
-        booksData = newBooks.slice(0, 8);
+        booksData = newBooks.slice(0, 20);
       } else if (!userPreferences && selectedGenre === 'all') {
         // No survey - load trending books
         const allBooks: AmazonBook[] = [];
-        const booksPerGenre = Math.ceil(12 / trendingGenres.length);
+        const booksPerGenre = Math.ceil(20 / trendingGenres.length);
         
         for (const genre of trendingGenres) {
           const genreKey = genre.toLowerCase().replace(/\s+/g, '-').replace(/&/g, '');
@@ -143,20 +159,28 @@ const Recommendations: React.FC = () => {
         const uniqueBooks = removeDuplicates(allBooks);
         const newBooks = uniqueBooks.filter(book => !displayedBooks.has(book.id));
         
-        booksData = newBooks.slice(0, 8);
+        booksData = newBooks.slice(0, 20);
       } else {
         // Load books for specific genre
         const genreKey = selectedGenre.toLowerCase().replace(/\s+/g, '-').replace(/&/g, '');
-        const allGenreBooks = await AmazonBooksService.getBooksByGenre(genreKey, 12);
+        const allGenreBooks = await AmazonBooksService.getBooksByGenre(genreKey, 25);
         
         // Remove duplicates and filter out already displayed books
         const uniqueBooks = removeDuplicates(allGenreBooks);
         const newBooks = uniqueBooks.filter(book => !displayedBooks.has(book.id));
         
-        booksData = newBooks.slice(0, 8);
+        booksData = newBooks.slice(0, 20);
       }
       
       setBooks(booksData);
+      
+      // Update available genres based on loaded books
+      const bookGenres = OpenLibraryService.getAvailableGenres(booksData);
+      if (selectedGenre === 'all') {
+        const currentGenres = availableGenres.filter(g => g !== 'all');
+        const combinedGenres = [...new Set([...currentGenres, ...bookGenres])];
+        setAvailableGenres(['all', ...combinedGenres.sort()]);
+      }
       
       // Track displayed books
       const newDisplayedBooks = new Set(displayedBooks);
@@ -183,39 +207,6 @@ const Recommendations: React.FC = () => {
     });
   };
 
-  const playActionSound = (action: 'interested' | 'read') => {
-    if (!soundEnabled) return;
-    
-    try {
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const oscillator = audioContext.createOscillator();
-      const gainNode = audioContext.createGain();
-      
-      oscillator.connect(gainNode);
-      gainNode.connect(audioContext.destination);
-      
-      if (action === 'interested') {
-        // Heart sound - warm, pleasant tone
-        oscillator.frequency.setValueAtTime(523, audioContext.currentTime); // C5
-        oscillator.frequency.setValueAtTime(659, audioContext.currentTime + 0.1); // E5
-        oscillator.frequency.setValueAtTime(784, audioContext.currentTime + 0.2); // G5
-      } else {
-        // Read sound - completion chime
-        oscillator.frequency.setValueAtTime(784, audioContext.currentTime); // G5
-        oscillator.frequency.setValueAtTime(1047, audioContext.currentTime + 0.1); // C6
-        oscillator.frequency.setValueAtTime(1319, audioContext.currentTime + 0.2); // E6
-      }
-      
-      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.4);
-      
-      oscillator.start(audioContext.currentTime);
-      oscillator.stop(audioContext.currentTime + 0.4);
-    } catch (error) {
-      console.log('Audio context not available');
-    }
-  };
-
   const addToMyBooks = async (book: AmazonBook) => {
     const existingBooks = JSON.parse(localStorage.getItem('focusreads-books') || '[]');
     const isAlreadyAdded = existingBooks.some((b: any) => b.id === book.id);
@@ -225,9 +216,9 @@ const Recommendations: React.FC = () => {
       localStorage.setItem('focusreads-books', JSON.stringify([...existingBooks, bookWithStatus]));
     }
     
-    // Play sound and replace book
-    playActionSound('interested');
-    await generateNewRecommendation(book.id, book.genre || 'fiction');
+    // Play sound and animate removal
+    AudioService.playSound('success');
+    await animateAndReplaceBook(book.id, book.genre || 'fiction');
   };
 
   const markAsRead = async (bookId: string) => {
@@ -241,10 +232,25 @@ const Recommendations: React.FC = () => {
       
       setReadBooks(prev => new Set([...prev, bookId]));
       
-      // Play sound and replace book
-      playActionSound('read');
-      await generateNewRecommendation(bookId, book.genre || 'fiction');
+      // Play sound and animate removal
+      AudioService.playSound('success');
+      await animateAndReplaceBook(bookId, book.genre || 'fiction');
     }
+  };
+
+  const animateAndReplaceBook = async (bookId: string, genre: string) => {
+    // Start animation
+    setAnimatingBooks(prev => new Set([...prev, bookId]));
+    
+    // Wait for animation to complete
+    setTimeout(async () => {
+      await generateNewRecommendation(bookId, genre);
+      setAnimatingBooks(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(bookId);
+        return newSet;
+      });
+    }, 500);
   };
 
   const generateNewRecommendation = async (excludeId: string, genre: string) => {
@@ -300,6 +306,11 @@ const Recommendations: React.FC = () => {
       rating: book.rating,
       amazonUrl: book.amazonUrl
     }, 'sample-read');
+  };
+
+  const handleAmazonClick = (book: AmazonBook) => {
+    AudioService.playSound('cashRegister');
+    handleBookView(book);
   };
 
   const exportData = () => {
@@ -380,6 +391,13 @@ const Recommendations: React.FC = () => {
     return moodLabels[userPreferences.mood as keyof typeof moodLabels] || '';
   };
 
+  const toggleSound = () => {
+    const newSoundEnabled = !soundEnabled;
+    setSoundEnabled(newSoundEnabled);
+    AudioService.setSoundEnabled(newSoundEnabled);
+    AudioService.playSound('click');
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
@@ -434,7 +452,7 @@ const Recommendations: React.FC = () => {
               
               {/* Sound Toggle */}
               <button
-                onClick={() => setSoundEnabled(!soundEnabled)}
+                onClick={toggleSound}
                 className={`p-2 rounded-lg transition-colors ${
                   soundEnabled 
                     ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400' 
@@ -520,6 +538,9 @@ const Recommendations: React.FC = () => {
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
               {isTrendingMode ? 'Browse by Genre' : 'Your Recommended Genres'}
             </h3>
+            <span className="text-sm text-gray-500 dark:text-gray-400">
+              ({availableGenres.length - 1} genres available)
+            </span>
           </div>
           <div className="flex flex-wrap gap-2">
             {availableGenres.map((genre) => (
@@ -543,7 +564,12 @@ const Recommendations: React.FC = () => {
         {/* Books Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {books.map((book) => (
-            <div key={book.id} className="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 relative group">
+            <div 
+              key={book.id} 
+              className={`bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 relative group ${
+                animatingBooks.has(book.id) ? 'animate-pulse opacity-50 scale-95' : ''
+              }`}
+            >
               {refreshingBook === book.id && (
                 <div className="absolute inset-0 bg-white/80 dark:bg-gray-800/80 flex items-center justify-center z-10 rounded-lg">
                   <div className="text-center">
@@ -607,7 +633,7 @@ const Recommendations: React.FC = () => {
                   <div className="flex justify-center space-x-3">
                     <button
                       onClick={() => markAsRead(book.id)}
-                      disabled={readBooks.has(book.id) || refreshingBook === book.id}
+                      disabled={readBooks.has(book.id) || refreshingBook === book.id || animatingBooks.has(book.id)}
                       className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 transform hover:scale-105 inline-flex items-center space-x-2 ${
                         readBooks.has(book.id)
                           ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 cursor-not-allowed'
@@ -620,7 +646,7 @@ const Recommendations: React.FC = () => {
                     
                     <button
                       onClick={() => addToMyBooks(book)}
-                      disabled={refreshingBook === book.id}
+                      disabled={refreshingBook === book.id || animatingBooks.has(book.id)}
                       className="bg-pink-600 hover:bg-pink-700 text-white px-4 py-2 rounded-lg font-medium transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl inline-flex items-center space-x-2"
                     >
                       <Heart className="w-4 h-4" />
@@ -633,7 +659,7 @@ const Recommendations: React.FC = () => {
                       href={book.amazonUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      onClick={() => handleBookView(book)}
+                      onClick={() => handleAmazonClick(book)}
                       className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition-colors inline-flex items-center justify-center space-x-2"
                     >
                       <ShoppingCart className="w-4 h-4" />

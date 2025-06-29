@@ -100,11 +100,41 @@
   transition: background-color 0.3s ease-in-out, border-color 0.3s ease-in-out, color 0.3s ease-in-out;
 }
 
-/* Body theming */
+/* Body theming with improved light mode visibility */
 body {
   background-color: var(--color-background);
   color: var(--color-text);
   transition: background-color 0.3s ease-in-out, color 0.3s ease-in-out;
+}
+
+/* Light mode improvements for better text visibility */
+.light .theme-text {
+  color: #1F2937 !important;
+}
+
+.light .theme-text-secondary {
+  color: #4B5563 !important;
+}
+
+/* Ensure goal text is visible in light mode */
+.light .bg-emerald-100 {
+  color: #065F46 !important;
+}
+
+.light .bg-pink-100 {
+  color: #9D174D !important;
+}
+
+.light .bg-amber-100 {
+  color: #92400E !important;
+}
+
+.light .bg-blue-100 {
+  color: #1E40AF !important;
+}
+
+.light .bg-purple-100 {
+  color: #6B21A8 !important;
 }
 
 /* PDF.js styles */
@@ -206,8 +236,8 @@ body {
   }
 }
 
-/* Swipe animation for book cards */
-@keyframes swipeOut {
+/* Book removal animation */
+@keyframes slideOutRight {
   0% {
     transform: translateX(0) rotate(0deg);
     opacity: 1;
@@ -218,8 +248,8 @@ body {
   }
 }
 
-.swipe-out {
-  animation: swipeOut 0.3s ease-in-out forwards;
+.animate-slide-out {
+  animation: slideOutRight 0.5s ease-in-out forwards;
 }
 
 /* Enhanced button hover effects with scale */
@@ -402,4 +432,13 @@ nav {
   background: linear-gradient(45deg, var(--color-primary), var(--color-secondary));
   mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   mask-composite: exclude;
+}
+
+/* Light mode class for body */
+.light {
+  --color-background: #FFFFFF;
+  --color-surface: #F9FAFB;
+  --color-text: #111827;
+  --color-text-secondary: #374151;
+  --color-border: #D1D5DB;
 }

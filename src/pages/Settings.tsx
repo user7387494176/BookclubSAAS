@@ -1,7 +1,8 @@
 import React, { useState, useRef } from 'react';
-import { Save, Upload, Palette, Moon, Sun, Eye, Download, Trash2 } from 'lucide-react';
+import { Save, Upload, Palette, Moon, Sun, Eye, Download, Trash2, Volume2, VolumeX } from 'lucide-react';
 import { useTheme, themes } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
+import { AudioService } from '../services/audioService';
 
 const Settings: React.FC = () => {
   const { isDark, currentTheme, customBackground, toggleDark, setTheme, setCustomBackground } = useTheme();
@@ -11,6 +12,7 @@ const Settings: React.FC = () => {
   const importInputRef = useRef<HTMLInputElement>(null);
   const [showPreview, setShowPreview] = useState(false);
   const [previewTheme, setPreviewTheme] = useState(currentTheme);
+  const [audioSettings, setAudioSettings] = useState(AudioService.getSettings());
 
   const handleBackgroundUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -43,6 +45,7 @@ const Settings: React.FC = () => {
       preferences: JSON.parse(localStorage.getItem('focusreads-preferences') || '{}'),
       pomodoroSessions: JSON.parse(localStorage.getItem('focusreads-pomodoro-sessions') || '[]'),
       pomodoroTotal: localStorage.getItem('focusreads-pomodoro-total') || '0',
+      audioSettings: JSON.parse(localStorage.getItem('focusreads-audio-settings') || '{}'),
       settings: {
         theme: currentTheme,
         isDark,
@@ -77,6 +80,7 @@ const Settings: React.FC = () => {
         if (data.preferences) localStorage.setItem('focusreads-preferences', JSON.stringify(data.preferences));
         if (data.pomodoroSessions) localStorage.setItem('focusreads-pomodoro-sessions', JSON.stringify(data.pomodoroSessions));
         if (data.pomodoroTotal) localStorage.setItem('focusreads-pomodoro-total', data.pomodoroTotal);
+        if (data.audioSettings) localStorage.setItem('focusreads-audio-settings', JSON.stringify(data.audioSettings));
         if (data.settings) {
           if (data.settings.theme) {
             localStorage.setItem('focusreads-theme', data.settings.theme);
@@ -113,6 +117,7 @@ const Settings: React.FC = () => {
       localStorage.removeItem('focusreads-pomodoro-sessions');
       localStorage.removeItem('focusreads-pomodoro-total');
       localStorage.removeItem('focusreads-pomodoro-state');
+      localStorage.removeItem('focusreads-audio-settings');
       setCustomBackground('');
       alert('All data has been cleared.');
     }
@@ -123,6 +128,18 @@ const Settings: React.FC = () => {
     return {
       background: `linear-gradient(135deg, ${theme.primary}, ${theme.secondary}, ${theme.accent})`
     };
+  };
+
+  const handleSoundToggle = () => {
+    const newSoundEnabled = !audioSettings.soundEnabled;
+    AudioService.setSoundEnabled(newSoundEnabled);
+    setAudioSettings(AudioService.getSettings());
+    AudioService.playSound('click');
+  };
+
+  const handleVolumeChange = (volume: number) => {
+    AudioService.setVolume(volume);
+    setAudioSettings(AudioService.getSettings());
   };
 
   return (
@@ -167,9 +184,89 @@ const Settings: React.FC = () => {
             </div>
           )}
 
-          {/* Data Management Section */}
+          {/* Audio Settings Section */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+              Audio Settings
+            </h2>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
+              Control button sounds and audio feedback throughout the application.
+            </p>
+            
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  {audioSettings.soundEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
+                  <div>
+                    <span className="font-medium text-gray-900 dark:text-white">
+                      Button Sounds
+                    </span>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      Play sounds when clicking buttons and performing actions
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={handleSoundToggle}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    audioSettings.soundEnabled ? 'bg-indigo-600' : 'bg-gray-200 dark:bg-gray-700'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      audioSettings.soundEnabled ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {audioSettings.soundEnabled && (
+                <div className="ml-8">
+                  <div className="flex items-center space-x-4">
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">
+                      Volume:
+                    </span>
+                    <input
+                      type="range"
+                      min="0"
+                      max="1"
+                      step="0.1"
+                      value={audioSettings.volume}
+                      onChange={(e) => handleVolumeChange(parseFloat(e.target.value))}
+                      className="flex-1 max-w-xs"
+                    />
+                    <span className="text-sm text-gray-600 dark:text-gray-400 w-12">
+                      {Math.round(audioSettings.volume * 100)}%
+                    </span>
+                  </div>
+                  <div className="mt-2 flex space-x-2">
+                    <button
+                      onClick={() => AudioService.playSound('click')}
+                      className="text-xs bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 px-2 py-1 rounded transition-colors"
+                    >
+                      Test Click
+                    </button>
+                    <button
+                      onClick={() => AudioService.playSound('cashRegister')}
+                      className="text-xs bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 px-2 py-1 rounded transition-colors"
+                    >
+                      Test Cash Register
+                    </button>
+                    <button
+                      onClick={() => AudioService.playSound('success')}
+                      className="text-xs bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 px-2 py-1 rounded transition-colors"
+                    >
+                      Test Success
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Data Management Section */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+            <h2 className="text-xl font-semibold text-gray-900  dark:text-white mb-4">
               Data Management
             </h2>
             <p className="text-gray-600 dark:text-gray-400 mb-6">
@@ -455,7 +552,7 @@ const Settings: React.FC = () => {
             <div className="space-y-2 text-gray-600 dark:text-gray-400">
               <p>Version 1.0.0</p>
               <p>Built with React, TypeScript, and Tailwind CSS</p>
-              <p>Features: PDF/EPUB readers, Audio player, Pomodoro timer, YouTube integration</p>
+              <p>Features: PDF/EPUB readers, Audio player, Pomodoro timer, YouTube integration, ISBN lookup</p>
               <p>© 2025 FocusReads. All rights reserved.</p>
             </div>
           </div>
