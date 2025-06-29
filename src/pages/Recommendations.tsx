@@ -30,7 +30,7 @@ const Recommendations: React.FC = () => {
     'Mystery & Thriller', 
     'Romance',
     'Science Fiction & Fantasy',
-    'Self-Help',
+    'Self Help',
     'Business & Investing',
     'Health & Wellness',
     'Biographies & Memoirs'
@@ -38,19 +38,22 @@ const Recommendations: React.FC = () => {
 
   // Mood-based genre mapping for enhanced recommendations
   const moodGenreMapping = {
-    'uplifting': ['Biographies & Memoirs', 'Self-Help', 'Religion & Spirituality', 'Humor'],
+    'uplifting': ['Biographies & Memoirs', 'Self Help', 'Religion & Spirituality', 'Humor'],
     'exciting': ['Action & Adventure', 'Mystery & Thriller', 'Science Fiction & Fantasy'],
-    'romantic': ['Romance', 'LGBTQ+ Books', 'Historical Fiction'],
+    'romantic': ['Romance', 'Lgbtq Books', 'Fiction'],
     'informative': ['Education & Reference', 'Business & Investing', 'Science & Math', 'History'],
     'dark': ['Mystery & Thriller', 'Psychology', 'Politics & Social Sciences'],
-    'relaxing': ['Science Fiction & Fantasy', 'Historical Fiction', 'Travel'],
+    'relaxing': ['Science Fiction & Fantasy', 'Fiction', 'Travel'],
     'serious': ['Politics & Social Sciences', 'History', 'Psychology', 'Religion & Spirituality']
   };
 
   useEffect(() => {
     loadUserPreferences();
+  }, []);
+
+  useEffect(() => {
     loadBooks();
-  }, [selectedGenre]);
+  }, [selectedGenre, userPreferences]);
 
   useEffect(() => {
     // Load read books from localStorage
@@ -112,48 +115,52 @@ const Recommendations: React.FC = () => {
         
         // Get books from each genre
         const allBooks: AmazonBook[] = [];
-        const booksPerGenre = Math.ceil(8 / Math.min(targetGenres.length, 4)); // Limit to 4 genres max
+        const booksPerGenre = Math.ceil(12 / Math.min(targetGenres.length, 4)); // Get more books initially
         
         for (const genre of targetGenres.slice(0, 4)) {
-          const genreBooks = await AmazonBooksService.getBooksByGenre(genre.toLowerCase().replace(/\s+/g, '-'), booksPerGenre);
+          const genreKey = genre.toLowerCase().replace(/\s+/g, '-').replace(/&/g, '');
+          const genreBooks = await AmazonBooksService.getBooksByGenre(genreKey, booksPerGenre);
           allBooks.push(...genreBooks);
         }
         
-        booksData = allBooks.slice(0, 8);
+        // Remove duplicates and filter out already displayed books
+        const uniqueBooks = removeDuplicates(allBooks);
+        const newBooks = uniqueBooks.filter(book => !displayedBooks.has(book.id));
+        
+        booksData = newBooks.slice(0, 8);
       } else if (!userPreferences && selectedGenre === 'all') {
         // No survey - load trending books
         const allBooks: AmazonBook[] = [];
-        const booksPerGenre = Math.ceil(8 / trendingGenres.length);
+        const booksPerGenre = Math.ceil(12 / trendingGenres.length);
         
         for (const genre of trendingGenres) {
-          const genreBooks = await AmazonBooksService.getBooksByGenre(genre.toLowerCase().replace(/\s+/g, '-'), booksPerGenre);
+          const genreKey = genre.toLowerCase().replace(/\s+/g, '-').replace(/&/g, '');
+          const genreBooks = await AmazonBooksService.getBooksByGenre(genreKey, booksPerGenre);
           allBooks.push(...genreBooks);
         }
         
-        booksData = allBooks.slice(0, 8);
+        // Remove duplicates and filter out already displayed books
+        const uniqueBooks = removeDuplicates(allBooks);
+        const newBooks = uniqueBooks.filter(book => !displayedBooks.has(book.id));
+        
+        booksData = newBooks.slice(0, 8);
       } else {
         // Load books for specific genre
-        const genreKey = selectedGenre.toLowerCase().replace(/\s+/g, '-');
-        booksData = await AmazonBooksService.getBooksByGenre(genreKey, 8);
+        const genreKey = selectedGenre.toLowerCase().replace(/\s+/g, '-').replace(/&/g, '');
+        const allGenreBooks = await AmazonBooksService.getBooksByGenre(genreKey, 12);
+        
+        // Remove duplicates and filter out already displayed books
+        const uniqueBooks = removeDuplicates(allGenreBooks);
+        const newBooks = uniqueBooks.filter(book => !displayedBooks.has(book.id));
+        
+        booksData = newBooks.slice(0, 8);
       }
       
-      // Filter out books that have already been displayed
-      const newBooks = booksData.filter(book => !displayedBooks.has(book.id));
-      
-      // If we don't have enough new books, get more
-      if (newBooks.length < 8) {
-        const additionalBooks = await AmazonBooksService.getRandomBooksByGenre(
-          selectedGenre === 'all' ? 'fiction' : selectedGenre.toLowerCase().replace(/\s+/g, '-'),
-          Array.from(displayedBooks)
-        );
-        newBooks.push(...additionalBooks.slice(0, 8 - newBooks.length));
-      }
-      
-      setBooks(newBooks.slice(0, 8));
+      setBooks(booksData);
       
       // Track displayed books
       const newDisplayedBooks = new Set(displayedBooks);
-      newBooks.forEach(book => newDisplayedBooks.add(book.id));
+      booksData.forEach(book => newDisplayedBooks.add(book.id));
       setDisplayedBooks(newDisplayedBooks);
       
     } catch (error) {
@@ -161,6 +168,19 @@ const Recommendations: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const removeDuplicates = (books: AmazonBook[]): AmazonBook[] => {
+    const seen = new Set<string>();
+    return books.filter(book => {
+      // Create a unique key based on title and author
+      const key = `${book.title.toLowerCase()}-${book.author.toLowerCase()}`;
+      if (seen.has(key)) {
+        return false;
+      }
+      seen.add(key);
+      return true;
+    });
   };
 
   const playActionSound = (action: 'interested' | 'read') => {
@@ -233,7 +253,8 @@ const Recommendations: React.FC = () => {
     try {
       const currentBookIds = books.map(b => b.id);
       const allDisplayedIds = Array.from(displayedBooks);
-      const newBooks = await AmazonBooksService.getRandomBooksByGenre(genre.toLowerCase(), [...currentBookIds, ...allDisplayedIds]);
+      const genreKey = genre.toLowerCase().replace(/\s+/g, '-').replace(/&/g, '');
+      const newBooks = await AmazonBooksService.getRandomBooksByGenre(genreKey, [...currentBookIds, ...allDisplayedIds]);
       
       if (newBooks.length > 0) {
         const newBook = newBooks[0];
@@ -366,7 +387,7 @@ const Recommendations: React.FC = () => {
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
             <p className="text-gray-600 dark:text-gray-400">
-              {isTrendingMode ? 'Finding trending books for you...' : 'Finding perfect books for you...'}
+              {isTrendingMode ? 'Finding trending books from Open Library...' : 'Finding perfect books for you from Open Library...'}
             </p>
           </div>
         </div>
@@ -383,17 +404,17 @@ const Recommendations: React.FC = () => {
             <div>
               <div className="flex items-center space-x-2 mb-2">
                 <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-                  {isTrendingMode ? 'Trending Genres' : 'Personalized Recommendations'}
+                  {isTrendingMode ? 'Trending Books' : 'Personalized Recommendations'}
                 </h1>
                 {isTrendingMode && <TrendingUp className="w-6 h-6 text-orange-500" />}
                 {userPreferences && <Target className="w-6 h-6 text-green-500" />}
               </div>
               <p className="text-gray-600 dark:text-gray-400">
                 {isTrendingMode 
-                  ? 'Complete Survey to Tailor Your Recommendations'
+                  ? 'Real books from Open Library - Complete Survey to Tailor Your Recommendations'
                   : userPreferences?.mood 
-                    ? `Books curated for your ${getMoodLabel().toLowerCase()} mood and preferences`
-                    : 'Books curated based on your preferences and reading goals'
+                    ? `Real books curated for your ${getMoodLabel().toLowerCase()} mood and preferences`
+                    : 'Real books curated based on your preferences and reading goals'
                 }
               </p>
             </div>
@@ -456,10 +477,10 @@ const Recommendations: React.FC = () => {
               </div>
               <div className="flex-1">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                  Currently Showing Trending Genres
+                  Currently Showing Real Books from Open Library
                 </h3>
                 <p className="text-gray-600 dark:text-gray-400 mb-4">
-                  These are popular books across trending genres. Take our quick survey to receive book recommendations tailored specifically to your reading preferences, mood, and interests.
+                  These are real books with actual ISBNs, covers, and descriptions from Open Library. Take our quick survey to receive book recommendations tailored specifically to your reading preferences, mood, and interests.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-3">
                   <Link
@@ -482,68 +503,44 @@ const Recommendations: React.FC = () => {
               <Target className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
               <div>
                 <h4 className="font-medium text-gray-900 dark:text-white">
-                  Recommendations for your {getMoodLabel()} mood
+                  Real books for your {getMoodLabel()} mood
                 </h4>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  We've enhanced your recommendations based on your current reading mood and selected genres.
+                  We've enhanced your recommendations with real books from Open Library based on your current reading mood and selected genres.
                 </p>
               </div>
             </div>
           </div>
         )}
 
-        {/* Personalized Genre Filter for survey users */}
-        {userPreferences && (
-          <div className="mb-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-              Your Recommended Genres
+        {/* Genre Filter */}
+        <div className="mb-8">
+          <div className="flex items-center space-x-3 mb-4">
+            {isTrendingMode ? <TrendingUp className="w-5 h-5 text-orange-500" /> : <Target className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />}
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+              {isTrendingMode ? 'Browse by Genre' : 'Your Recommended Genres'}
             </h3>
-            <div className="flex flex-wrap gap-2">
-              {availableGenres.map((genre) => (
-                <button
-                  key={genre}
-                  onClick={() => setSelectedGenre(genre)}
-                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                    selectedGenre === genre
-                      ? 'bg-indigo-600 text-white'
-                      : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
-                  }`}
-                >
-                  {getGenreDisplayName(genre)}
-                </button>
-              ))}
-            </div>
           </div>
-        )}
-
-        {/* Trending Genre Filter for non-survey users */}
-        {isTrendingMode && (
-          <div className="mb-8">
-            <div className="flex items-center space-x-3 mb-4">
-              <TrendingUp className="w-5 h-5 text-orange-500" />
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                Trending Genres
-              </h3>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {availableGenres.map((genre) => (
-                <button
-                  key={genre}
-                  onClick={() => setSelectedGenre(genre)}
-                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                    selectedGenre === genre
+          <div className="flex flex-wrap gap-2">
+            {availableGenres.map((genre) => (
+              <button
+                key={genre}
+                onClick={() => setSelectedGenre(genre)}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                  selectedGenre === genre
+                    ? isTrendingMode 
                       ? 'bg-orange-600 text-white'
-                      : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
-                  }`}
-                >
-                  {getGenreDisplayName(genre)}
-                </button>
-              ))}
-            </div>
+                      : 'bg-indigo-600 text-white'
+                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
+                }`}
+              >
+                {getGenreDisplayName(genre)}
+              </button>
+            ))}
           </div>
-        )}
+        </div>
 
-        {/* Books Grid - Enhanced with larger covers */}
+        {/* Books Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {books.map((book) => (
             <div key={book.id} className="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 relative group">
@@ -563,22 +560,14 @@ const Recommendations: React.FC = () => {
                   className="w-full h-80 object-cover"
                   onError={(e) => {
                     const target = e.target as HTMLImageElement;
-                    target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(book.title)}&background=4F46E5&color=fff&size=400`;
+                    target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(book.title.substring(0, 20))}&background=4F46E5&color=fff&size=400&bold=true`;
                   }}
                 />
                 <div className="absolute top-4 right-4 flex flex-col space-y-2">
-                  {userPreferences && (
-                    <div className="flex items-center space-x-1 bg-green-500 text-white px-2 py-1 rounded-full text-xs font-medium">
-                      <Target className="w-3 h-3" />
-                      <span>For You</span>
-                    </div>
-                  )}
-                  {isTrendingMode && (
-                    <div className="flex items-center space-x-1 bg-orange-500 text-white px-2 py-1 rounded-full text-xs font-medium">
-                      <TrendingUp className="w-3 h-3" />
-                      <span>Trending</span>
-                    </div>
-                  )}
+                  <div className="flex items-center space-x-1 bg-green-500 text-white px-2 py-1 rounded-full text-xs font-medium">
+                    <BookOpen className="w-3 h-3" />
+                    <span>Real Book</span>
+                  </div>
                   {book.rating && (
                     <div className="flex items-center space-x-1 bg-white/90 dark:bg-gray-800/90 text-gray-900 dark:text-white px-2 py-1 rounded-full text-xs font-medium">
                       <Star className="w-3 h-3 text-yellow-400 fill-current" />
@@ -597,11 +586,15 @@ const Recommendations: React.FC = () => {
                     <span>by {book.author}</span>
                   </div>
                   <div className="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400 mb-4">
-                    <span>{book.publishDate}</span>
-                    <span>•</span>
-                    <span className="capitalize">{book.genre?.replace('-', ' ')}</span>
-                    <span>•</span>
-                    <span>{book.audience}</span>
+                    {book.publishDate && <span>{book.publishDate}</span>}
+                    {book.publishDate && book.genre && <span>•</span>}
+                    {book.genre && <span className="capitalize">{book.genre}</span>}
+                    {book.isbn && (
+                      <>
+                        <span>•</span>
+                        <span className="font-mono text-xs">ISBN: {book.isbn}</span>
+                      </>
+                    )}
                   </div>
                 </div>
 
@@ -610,7 +603,7 @@ const Recommendations: React.FC = () => {
                 </p>
 
                 <div className="space-y-3">
-                  {/* Quick Actions with Swipe-like Animation */}
+                  {/* Quick Actions */}
                   <div className="flex justify-center space-x-3">
                     <button
                       onClick={() => markAsRead(book.id)}
@@ -644,8 +637,7 @@ const Recommendations: React.FC = () => {
                       className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition-colors inline-flex items-center justify-center space-x-2"
                     >
                       <ShoppingCart className="w-4 h-4" />
-                      <span>Buy</span>
-                      {book.price && <span className="text-xs">({book.price})</span>}
+                      <span>Buy on Amazon</span>
                     </a>
                   </div>
                   

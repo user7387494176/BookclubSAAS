@@ -1,5 +1,5 @@
-// Amazon Books API service with real ISBN integration
-import { RealBookDataService, RealBookData } from './realBookData';
+// Amazon Books API service using Open Library for real book data
+import { OpenLibraryService, BookData } from './openLibraryApi';
 
 export interface AmazonBook {
   id: string;
@@ -19,65 +19,68 @@ export interface AmazonBook {
   asin?: string;
 }
 
-function convertRealBookToAmazon(realBook: RealBookData): AmazonBook {
+function convertToAmazonBook(bookData: BookData): AmazonBook {
   return {
-    id: realBook.isbn,
-    title: realBook.title,
-    author: realBook.author,
-    cover: realBook.cover,
-    isbn: realBook.isbn,
-    publishDate: realBook.publishDate,
-    genre: realBook.genre,
-    audience: 'Adult',
-    description: realBook.description,
-    amazonUrl: realBook.amazonUrl,
-    sampleText: realBook.sampleText,
-    rating: realBook.rating,
-    reviewCount: realBook.reviewCount,
-    price: realBook.price,
-    asin: realBook.isbn.replace(/-/g, '').substring(3, 13) // Convert ISBN to ASIN-like format
+    id: bookData.id,
+    title: bookData.title,
+    author: bookData.author,
+    cover: bookData.cover,
+    isbn: bookData.isbn,
+    publishDate: bookData.publishDate,
+    genre: bookData.genre,
+    audience: bookData.audience,
+    description: bookData.description,
+    amazonUrl: bookData.amazonUrl,
+    sampleText: bookData.sampleText,
+    rating: bookData.rating,
+    reviewCount: bookData.reviewCount,
+    price: bookData.price,
+    asin: bookData.isbn ? bookData.isbn.replace(/-/g, '').substring(3, 13) : undefined
   };
 }
 
 export class AmazonBooksService {
   static async getBooksByGenre(genre: string, limit: number = 8): Promise<AmazonBook[]> {
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 800));
-    
-    const realBooks = RealBookDataService.getBooksByGenre(genre, limit);
-    return realBooks.map(convertRealBookToAmazon);
+    try {
+      const books = await OpenLibraryService.getBooksByGenre(genre, limit);
+      return books.map(convertToAmazonBook);
+    } catch (error) {
+      console.error('Error fetching books by genre:', error);
+      return [];
+    }
   }
 
   static async getBookById(id: string): Promise<AmazonBook | null> {
-    await new Promise(resolve => setTimeout(resolve, 300));
-    
-    const realBook = RealBookDataService.getBookById(id);
-    return realBook ? convertRealBookToAmazon(realBook) : null;
+    try {
+      const book = await OpenLibraryService.getBookById(id);
+      return book ? convertToAmazonBook(book) : null;
+    } catch (error) {
+      console.error('Error fetching book by ID:', error);
+      return null;
+    }
   }
 
   static async searchBooks(query: string): Promise<AmazonBook[]> {
-    await new Promise(resolve => setTimeout(resolve, 600));
-    
-    const realBooks = RealBookDataService.searchBooks(query);
-    return realBooks.map(convertRealBookToAmazon);
+    try {
+      const books = await OpenLibraryService.searchBooks(query);
+      return books.map(convertToAmazonBook);
+    } catch (error) {
+      console.error('Error searching books:', error);
+      return [];
+    }
   }
 
   static async getRandomBooksByGenre(genre: string, exclude: string[] = []): Promise<AmazonBook[]> {
-    await new Promise(resolve => setTimeout(resolve, 400));
-    
-    let availableBooks = RealBookDataService.getBooksByGenre(genre, 20);
-    
-    // Filter out excluded books
-    availableBooks = availableBooks.filter(book => !exclude.includes(book.isbn));
-    
-    // Shuffle and take first 4
-    const shuffled = availableBooks.sort(() => 0.5 - Math.random());
-    const selectedBooks = shuffled.slice(0, 4);
-    
-    return selectedBooks.map(convertRealBookToAmazon);
+    try {
+      const books = await OpenLibraryService.getRandomBooksByGenre(genre, exclude);
+      return books.map(convertToAmazonBook);
+    } catch (error) {
+      console.error('Error getting random books:', error);
+      return [];
+    }
   }
 
   static getAllGenres(): string[] {
-    return RealBookDataService.getAllGenres();
+    return OpenLibraryService.getAllGenres();
   }
 }

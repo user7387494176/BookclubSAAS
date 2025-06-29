@@ -69,7 +69,7 @@ const BookSample: React.FC = () => {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
-            <p className="text-gray-600 dark:text-gray-400">Loading book sample...</p>
+            <p className="text-gray-600 dark:text-gray-400">Loading book sample from Open Library...</p>
           </div>
         </div>
       </div>
@@ -118,6 +118,10 @@ const BookSample: React.FC = () => {
                   src={book.cover}
                   alt={book.title}
                   className="w-full h-64 md:h-full object-cover"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(book.title.substring(0, 20))}&background=4F46E5&color=fff&size=400&bold=true`;
+                  }}
                 />
               </div>
               
@@ -133,12 +137,21 @@ const BookSample: React.FC = () => {
                       <span>by {book.author}</span>
                     </div>
                     <div className="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400 mb-4">
-                      <span>{book.publishDate}</span>
-                      <span>•</span>
-                      <span className="capitalize">{book.genre?.replace('-', ' ')}</span>
-                      <span>•</span>
-                      <span>{book.audience}</span>
+                      {book.publishDate && <span>{book.publishDate}</span>}
+                      {book.publishDate && book.genre && <span>•</span>}
+                      {book.genre && <span className="capitalize">{book.genre?.replace('-', ' ')}</span>}
+                      {book.audience && (
+                        <>
+                          <span>•</span>
+                          <span>{book.audience}</span>
+                        </>
+                      )}
                     </div>
+                    {book.isbn && (
+                      <div className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                        <span className="font-mono">ISBN: {book.isbn}</span>
+                      </div>
+                    )}
                   </div>
                   
                   {book.rating && (
@@ -149,9 +162,11 @@ const BookSample: React.FC = () => {
                           {book.rating}
                         </span>
                       </div>
-                      <div className="text-xs text-gray-500 dark:text-gray-400">
-                        {book.reviewCount?.toLocaleString()} reviews
-                      </div>
+                      {book.reviewCount && (
+                        <div className="text-xs text-gray-500 dark:text-gray-400">
+                          {book.reviewCount.toLocaleString()} reviews
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -203,9 +218,9 @@ const BookSample: React.FC = () => {
             
             <div className="mt-6 p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
               <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                <strong>Note:</strong> This is a sample excerpt from the book. The full reading experience 
-                includes much more content, character development, and story progression. 
-                Purchase the complete book to continue reading.
+                <strong>Note:</strong> This is a sample excerpt. The full book contains much more content, 
+                character development, and story progression. This book is available from real publishers 
+                and can be purchased through Amazon or your local bookstore.
               </p>
             </div>
           </div>
