@@ -19,6 +19,8 @@ interface PomodoroContextType {
   sessions: PomodoroSession[];
   isMinimized: boolean;
   customDuration: number;
+  isPaused: boolean;
+  pausedAt: number | null;
   startTimer: () => void;
   pauseTimer: () => void;
   resetTimer: () => void;
@@ -41,11 +43,14 @@ export const PomodoroProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [isMinimized, setIsMinimized] = useState(true);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [customDuration, setCustomDuration] = useState(25); // Default 25 minutes
+  const [isPaused, setIsPaused] = useState(false);
+  const [pausedAt, setPausedAt] = useState<number | null>(null);
   
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const startTimeRef = useRef<number | null>(null);
   const pausedTimeRef = useRef<number>(0);
+  const pauseTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Initialize audio and load saved state
   useEffect(() => {
@@ -64,8 +69,9 @@ export const PomodoroProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     if (preferences) {
       const parsed = JSON.parse(preferences);
       if (parsed.pomodoroMinutes) {
-        setCustomDuration(parsed.pomodoroMinutes);
-        setTimeLeft(parsed.pomodoroMinutes * 60);
+        const duration = Math.max(10, parsed.pomodoroMinutes); // Minimum 10 minutes
+        setCustomDuration(duration);
+        setTimeLeft(duration * 60);
       }
     }
     
@@ -79,10 +85,10 @@ export const PomodoroProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setTotalBreaks(parseInt(savedTotalBreaks));
     }
     
-    // Restore timer state if it was running
+    // Restore timer state if it was running or paused
     if (savedState) {
       const state = JSON.parse(savedState);
-      if (state.isActive && state.startTime) {
+      if (state.startTime) {
         const elapsed = Math.floor((Date.now() - state.startTime) / 1000);
         const remaining = state.initialTime - elapsed;
         
@@ -90,8 +96,15 @@ export const PomodoroProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           setTimeLeft(remaining);
           setCurrentType(state.currentType);
           setSession(state.session);
-          setIsActive(true);
-          startTimeRef.current = state.startTime;
+          
+          if (state.isPaused) {
+            setIsPaused(true);
+            setPausedAt(state.pausedAt);
+            setIsActive(false);
+          } else {
+            setIsActive(true);
+            startTimeRef.current = state.startTime;
+          }
         } else {
           // Timer should have completed while away
           localStorage.removeItem('focusreads-pomodoro-state');
@@ -107,11 +120,13 @@ export const PomodoroProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     localStorage.setItem('focusreads-pomodoro-breaks', totalBreaks.toString());
   }, [sessions, totalSessions, totalBreaks]);
 
-  // Save timer state when active
+  // Save timer state when active or paused
   useEffect(() => {
-    if (isActive && startTimeRef.current) {
+    if ((isActive || isPaused) && startTimeRef.current) {
       const state = {
         isActive,
+        isPaused,
+        pausedAt,
         startTime: startTimeRef.current,
         initialTime: getSessionDuration(currentType),
         currentType,
@@ -121,20 +136,38 @@ export const PomodoroProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     } else {
       localStorage.removeItem('focusreads-pomodoro-state');
     }
-  }, [isActive, currentType, session]);
+  }, [isActive, isPaused, pausedAt, currentType, session]);
+
+  // Auto-reset after 35 minutes of being paused
+  useEffect(() => {
+    if (isPaused && pausedAt) {
+      pauseTimeoutRef.current = setTimeout(() => {
+        resetTimer();
+      }, 35 * 60 * 1000); // 35 minutes
+    } else if (pauseTimeoutRef.current) {
+      clearTimeout(pauseTimeoutRef.current);
+      pauseTimeoutRef.current = null;
+    }
+
+    return () => {
+      if (pauseTimeoutRef.current) {
+        clearTimeout(pauseTimeoutRef.current);
+      }
+    };
+  }, [isPaused, pausedAt]);
 
   const getSessionDuration = (type: 'focus' | 'short-break' | 'long-break') => {
     switch (type) {
-      case 'focus': return customDuration * 60;
-      case 'short-break': return Math.max(5, Math.floor(customDuration * 0.2)) * 60; // 20% of focus time, min 5 min
-      case 'long-break': return Math.max(10, Math.floor(customDuration * 0.4)) * 60; // 40% of focus time, min 10 min
-      default: return customDuration * 60;
+      case 'focus': return Math.max(10, customDuration) * 60; // Minimum 10 minutes
+      case 'short-break': return Math.max(5, Math.floor(customDuration * 0.2)) * 60;
+      case 'long-break': return Math.max(10, Math.floor(customDuration * 0.4)) * 60;
+      default: return Math.max(10, customDuration) * 60;
     }
   };
 
-  // Timer logic with persistent timing
+  // Timer logic with persistent timing and pause functionality
   useEffect(() => {
-    if (isActive) {
+    if (isActive && !isPaused) {
       intervalRef.current = setInterval(() => {
         if (startTimeRef.current) {
           const elapsed = Math.floor((Date.now() - startTimeRef.current - pausedTimeRef.current) / 1000);
@@ -160,7 +193,7 @@ export const PomodoroProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         clearInterval(intervalRef.current);
       }
     };
-  }, [isActive, currentType, customDuration]);
+  }, [isActive, isPaused, currentType, customDuration]);
 
   const playChime = () => {
     // Create a simple chime sound using Web Audio API
@@ -236,6 +269,8 @@ export const PomodoroProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const handleSessionComplete = () => {
     setIsActive(false);
+    setIsPaused(false);
+    setPausedAt(null);
     startTimeRef.current = null;
     pausedTimeRef.current = 0;
     playChime();
@@ -296,6 +331,8 @@ export const PomodoroProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     startTimeRef.current = Date.now();
     pausedTimeRef.current = 0;
     setIsActive(true);
+    setIsPaused(false);
+    setPausedAt(null);
   };
 
   const startTimer = () => {
@@ -304,39 +341,55 @@ export const PomodoroProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       Notification.requestPermission();
     }
     
-    if (!isActive && currentType === 'focus') {
+    if (isPaused && pausedAt) {
+      // Resume from pause
+      const pauseDuration = Date.now() - pausedAt;
+      pausedTimeRef.current += pauseDuration;
+      setIsPaused(false);
+      setPausedAt(null);
+      setIsActive(true);
+    } else if (!isActive && currentType === 'focus') {
+      // Start new focus session
       const newSession: PomodoroSession = {
         id: Date.now().toString(),
         startTime: new Date().toISOString(),
         type: 'focus',
         completed: false,
-        duration: customDuration
+        duration: Math.max(10, customDuration) // Minimum 10 minutes
       };
       
       setSessions(prev => [...prev, newSession]);
       setCurrentSessionId(newSession.id);
-    }
-    
-    if (!startTimeRef.current) {
       startTimeRef.current = Date.now();
       pausedTimeRef.current = 0;
+      setIsActive(true);
+      setIsPaused(false);
+      setPausedAt(null);
     } else {
-      // Resuming from pause
-      const pauseDuration = Date.now() - (startTimeRef.current + pausedTimeRef.current);
-      pausedTimeRef.current += pauseDuration;
+      // Resume existing session
+      if (!startTimeRef.current) {
+        startTimeRef.current = Date.now();
+        pausedTimeRef.current = 0;
+      }
+      setIsActive(true);
+      setIsPaused(false);
+      setPausedAt(null);
     }
     
-    setIsActive(true);
     playChime();
   };
 
   const pauseTimer = () => {
     setIsActive(false);
+    setIsPaused(true);
+    setPausedAt(Date.now());
     playChime();
   };
 
   const resetTimer = () => {
     setIsActive(false);
+    setIsPaused(false);
+    setPausedAt(null);
     startTimeRef.current = null;
     pausedTimeRef.current = 0;
     
@@ -346,11 +399,19 @@ export const PomodoroProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
     
     setTimeLeft(getSessionDuration(currentType));
+    
+    // Clear pause timeout
+    if (pauseTimeoutRef.current) {
+      clearTimeout(pauseTimeoutRef.current);
+      pauseTimeoutRef.current = null;
+    }
   };
 
   const skipBreak = () => {
     if (currentType !== 'focus') {
       setIsActive(false);
+      setIsPaused(false);
+      setPausedAt(null);
       startTimeRef.current = null;
       pausedTimeRef.current = 0;
       
@@ -374,14 +435,15 @@ export const PomodoroProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const handleSetCustomDuration = (minutes: number) => {
-    setCustomDuration(minutes);
-    if (currentType === 'focus' && !isActive) {
-      setTimeLeft(minutes * 60);
+    const duration = Math.max(10, minutes); // Minimum 10 minutes
+    setCustomDuration(duration);
+    if (currentType === 'focus' && !isActive && !isPaused) {
+      setTimeLeft(duration * 60);
     }
     
     // Save to preferences
     const preferences = JSON.parse(localStorage.getItem('focusreads-preferences') || '{}');
-    preferences.pomodoroMinutes = minutes;
+    preferences.pomodoroMinutes = duration;
     localStorage.setItem('focusreads-preferences', JSON.stringify(preferences));
   };
 
@@ -396,6 +458,8 @@ export const PomodoroProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       sessions,
       isMinimized,
       customDuration,
+      isPaused,
+      pausedAt,
       startTimer,
       pauseTimer,
       resetTimer,

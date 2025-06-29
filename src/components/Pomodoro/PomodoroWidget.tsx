@@ -12,6 +12,7 @@ const PomodoroWidget: React.FC = () => {
     totalBreaks,
     isMinimized,
     customDuration,
+    isPaused,
     startTimer,
     pauseTimer,
     resetTimer,
@@ -117,7 +118,7 @@ const PomodoroWidget: React.FC = () => {
           <div className="flex items-center space-x-2">
             {getTypeIcon()}
             <span className="font-mono text-sm font-medium">{formatTime(timeLeft)}</span>
-            <div className={`w-2 h-2 rounded-full ${isActive ? 'bg-white pomodoro-pulse' : 'bg-white/50'}`} />
+            <div className={`w-2 h-2 rounded-full ${isActive ? 'bg-white pomodoro-pulse' : isPaused ? 'bg-yellow-300' : 'bg-white/50'}`} />
           </div>
         </div>
       </div>
@@ -136,6 +137,9 @@ const PomodoroWidget: React.FC = () => {
             {getTypeIcon()}
             <span className="font-medium text-gray-900 dark:text-white">{getTypeLabel()}</span>
             <span className="text-xs text-gray-500 dark:text-gray-400">Session {session}</span>
+            {isPaused && (
+              <span className="text-xs text-yellow-600 dark:text-yellow-400 font-medium">PAUSED</span>
+            )}
           </div>
           <div className="flex items-center space-x-1">
             <span className="text-xs text-gray-500 dark:text-gray-400">
@@ -151,7 +155,7 @@ const PomodoroWidget: React.FC = () => {
         </div>
 
         {/* Custom Duration Setting for Focus Mode */}
-        {currentType === 'focus' && !isActive && (
+        {currentType === 'focus' && !isActive && !isPaused && (
           <div className="mb-3 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
             <div className="flex items-center space-x-2 mb-2">
               <Settings className="w-3 h-3 text-blue-600 dark:text-blue-400" />
@@ -160,13 +164,13 @@ const PomodoroWidget: React.FC = () => {
             <div className="flex items-center space-x-2">
               <input
                 type="number"
-                min="5"
+                min="10"
                 max="240"
                 value={customDuration}
-                onChange={(e) => setCustomDuration(parseInt(e.target.value) || 25)}
+                onChange={(e) => setCustomDuration(parseInt(e.target.value) || 10)}
                 className="w-16 px-2 py-1 text-xs border border-blue-300 dark:border-blue-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
               />
-              <span className="text-xs text-blue-700 dark:text-blue-300">minutes</span>
+              <span className="text-xs text-blue-700 dark:text-blue-300">minutes (min: 10)</span>
             </div>
           </div>
         )}
@@ -199,6 +203,7 @@ const PomodoroWidget: React.FC = () => {
           </div>
           <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
             {Math.round(getProgress())}% complete
+            {isPaused && ' • Timer paused'}
           </div>
         </div>
 
@@ -240,11 +245,16 @@ const PomodoroWidget: React.FC = () => {
         {/* Status */}
         <div className="mt-3 text-center">
           <div className="text-xs text-gray-500 dark:text-gray-400">
-            {isActive ? 'Active' : 'Paused'} • 
+            {isActive ? 'Active' : isPaused ? 'Paused' : 'Ready'} • 
             {currentType === 'focus' ? ` ${customDuration} min focus` : 
              currentType === 'short-break' ? ` ${Math.max(5, Math.floor(customDuration * 0.2))} min break` : 
              ` ${Math.max(10, Math.floor(customDuration * 0.4))} min break`}
           </div>
+          {isPaused && (
+            <div className="text-xs text-yellow-600 dark:text-yellow-400 mt-1">
+              Auto-reset in 35 minutes if not resumed
+            </div>
+          )}
         </div>
 
         {/* Session Summary */}

@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Play, Pause, RotateCcw, Volume2, VolumeX, Clock, Coffee, Upload, FileText, BookOpen, Headphones, X, Settings } from 'lucide-react';
+import { Play, Pause, RotateCcw, Volume2, VolumeX, Clock, Coffee, Upload, FileText, BookOpen, Headphones, X, Settings, Music } from 'lucide-react';
 import PDFReader from '../components/Reader/PDFReader';
 import EPUBReader from '../components/Reader/EPUBReader';
 import AudioPlayer from '../components/Audio/AudioPlayer';
+import PlaylistAudioPlayer from '../components/Audio/PlaylistAudioPlayer';
 import { usePomodoro } from '../contexts/PomodoroContext';
 
 interface YouTubeMusic {
@@ -17,6 +18,7 @@ const FocusMode: React.FC = () => {
     currentType,
     session,
     customDuration,
+    isPaused,
     startTimer,
     pauseTimer,
     resetTimer,
@@ -31,6 +33,7 @@ const FocusMode: React.FC = () => {
   const [fileType, setFileType] = useState<'pdf' | 'epub' | 'audio' | null>(null);
   const [showReader, setShowReader] = useState(false);
   const [showAudioPlayer, setShowAudioPlayer] = useState(false);
+  const [showPlaylistPlayer, setShowPlaylistPlayer] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -105,6 +108,31 @@ const FocusMode: React.FC = () => {
     }
   };
 
+  const handleDrop = (event: React.DragEvent) => {
+    event.preventDefault();
+    const file = event.dataTransfer.files[0];
+    if (file) {
+      const extension = file.name.split('.').pop()?.toLowerCase();
+      
+      if (extension === 'pdf') {
+        setFileType('pdf');
+      } else if (extension === 'epub') {
+        setFileType('epub');
+      } else if (['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac'].includes(extension || '')) {
+        setFileType('audio');
+      } else {
+        alert('Unsupported file type. Please upload PDF, EPUB, or audio files (MP3, WAV, OGG, M4A, AAC, FLAC).');
+        return;
+      }
+      
+      setUploadedFile(file);
+    }
+  };
+
+  const handleDragOver = (event: React.DragEvent) => {
+    event.preventDefault();
+  };
+
   const openReader = () => {
     if (fileType === 'pdf' || fileType === 'epub') {
       setShowReader(true);
@@ -159,26 +187,32 @@ const FocusMode: React.FC = () => {
                   {currentType === 'focus' ? <Clock className="w-4 h-4" /> : <Coffee className="w-4 h-4" />}
                   <span>{currentType === 'focus' ? 'Focus Time' : currentType === 'short-break' ? 'Short Break' : 'Long Break'}</span>
                 </div>
+                {isPaused && (
+                  <div className="flex items-center space-x-2 text-sm text-yellow-600 dark:text-yellow-400">
+                    <Pause className="w-4 h-4" />
+                    <span>Paused</span>
+                  </div>
+                )}
               </div>
 
               {/* Manual Duration Control */}
-              {currentType === 'focus' && !isActive && (
+              {currentType === 'focus' && !isActive && !isPaused && (
                 <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
                   <div className="flex items-center justify-center space-x-3">
                     <Settings className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                     <span className="text-sm font-medium text-blue-700 dark:text-blue-300">Session Duration:</span>
                     <input
                       type="number"
-                      min="5"
+                      min="10"
                       max="240"
                       value={customDuration}
-                      onChange={(e) => setCustomDuration(parseInt(e.target.value) || 25)}
+                      onChange={(e) => setCustomDuration(parseInt(e.target.value) || 10)}
                       className="w-20 px-2 py-1 text-sm border border-blue-300 dark:border-blue-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                     />
                     <span className="text-sm text-blue-700 dark:text-blue-300">minutes</span>
                   </div>
                   <p className="text-xs text-blue-600 dark:text-blue-400 mt-2 text-center">
-                    Breaks will be automatically calculated: Short ({Math.max(5, Math.floor(customDuration * 0.2))} min) • Long ({Math.max(10, Math.floor(customDuration * 0.4))} min)
+                    Minimum 10 minutes • Breaks: Short ({Math.max(5, Math.floor(customDuration * 0.2))} min) • Long ({Math.max(10, Math.floor(customDuration * 0.4))} min)
                   </p>
                 </div>
               )}
@@ -236,11 +270,14 @@ const FocusMode: React.FC = () => {
                       ? 'bg-red-500 hover:bg-red-600'
                       : currentType === 'focus'
                         ? 'theme-primary hover:opacity-90'
-                        : 'bg-green-500 hover:bg-green-600'
+                        : currentType === 'short-break'
+                          ? 'bg-green-600 hover:bg-green-700'
+                          : 'bg-purple-600 hover:bg-purple-700'
                   }`}
                 >
                   {isActive ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6 ml-1" />}
                 </button>
+                
                 <button
                   onClick={resetTimer}
                   className="w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 flex items-center justify-center transition-all hover:scale-105"
@@ -251,7 +288,7 @@ const FocusMode: React.FC = () => {
             </div>
           </div>
 
-          {/* File Reader Section */}
+          {/* Reading Material Section */}
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8">
             <div className="mb-6">
               <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
@@ -259,7 +296,11 @@ const FocusMode: React.FC = () => {
               </h3>
 
               {!uploadedFile ? (
-                <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-8 text-center">
+                <div 
+                  className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-8 text-center transition-colors hover:border-indigo-400 dark:hover:border-indigo-500"
+                  onDrop={handleDrop}
+                  onDragOver={handleDragOver}
+                >
                   <div className="space-y-4">
                     <div className="flex justify-center space-x-4">
                       <FileText className="w-12 h-12 text-gray-400" />
@@ -272,6 +313,9 @@ const FocusMode: React.FC = () => {
                       </h4>
                       <p className="text-gray-600 dark:text-gray-400 mb-4">
                         Support for PDF, EPUB, and audio files (MP3, WAV, M4A, etc.)
+                      </p>
+                      <p className="text-sm text-gray-500 dark:text-gray-500 mb-4">
+                        Drag and drop files here or click to browse
                       </p>
                       <input
                         ref={fileInputRef}
@@ -343,12 +387,43 @@ const FocusMode: React.FC = () => {
           </div>
         </div>
 
-        {/* Music Section */}
+        {/* Play Your Focus Music While You Read Section */}
+        <div className="mt-8 bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8">
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center space-x-3">
+                <Music className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
+                <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+                  Play Your Focus Music While You Read
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowPlaylistPlayer(!showPlaylistPlayer)}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition-colors inline-flex items-center space-x-2"
+              >
+                <Upload className="w-4 h-4" />
+                <span>Upload Your Own WAV, MP3, or M4A Files</span>
+              </button>
+            </div>
+
+            {showPlaylistPlayer && (
+              <div className="mb-6">
+                <PlaylistAudioPlayer onClose={() => setShowPlaylistPlayer(false)} />
+              </div>
+            )}
+
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
+              Choose from curated focus music or upload your own audio files to create the perfect reading atmosphere.
+            </p>
+          </div>
+        </div>
+
+        {/* YouTube Music Section */}
         <div className="mt-8 bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8">
           <div className="mb-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
-                Focus Music
+                Curated Focus Music
               </h3>
               {selectedMusic && (
                 <button
@@ -423,9 +498,9 @@ const FocusMode: React.FC = () => {
               <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/30 rounded-full flex items-center justify-center mx-auto mb-3">
                 <Clock className="w-6 h-6 theme-primary-text" />
               </div>
-              <h4 className="font-medium text-gray-900 dark:text-white mb-2">Custom Duration</h4>
+              <h4 className="font-medium text-gray-900 dark:text-white mb-2">Smart Pausing</h4>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                Set your own focus time based on your reading goals and available time
+                Pause preserves your progress and auto-resets after 35 minutes of inactivity
               </p>
             </div>
             <div className="text-center">
@@ -434,16 +509,16 @@ const FocusMode: React.FC = () => {
               </div>
               <h4 className="font-medium text-gray-900 dark:text-white mb-2">Digital Reading</h4>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                Upload and read PDF, EPUB files directly in your browser
+                Upload and read PDF, EPUB files with drag-and-drop support
               </p>
             </div>
             <div className="text-center">
               <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-full flex items-center justify-center mx-auto mb-3">
                 <Headphones className="w-6 h-6 text-purple-600 dark:text-purple-400" />
               </div>
-              <h4 className="font-medium text-gray-900 dark:text-white mb-2">Audio Books</h4>
+              <h4 className="font-medium text-gray-900 dark:text-white mb-2">Audio Playlists</h4>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                Listen to audiobooks with speed controls and progress tracking
+                Create custom playlists with drag-and-drop reordering for perfect focus music
               </p>
             </div>
             <div className="text-center">
@@ -452,7 +527,7 @@ const FocusMode: React.FC = () => {
               </div>
               <h4 className="font-medium text-gray-900 dark:text-white mb-2">Smart Breaks</h4>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                Automated breaks calculated based on your focus duration
+                Automated breaks calculated based on your focus duration (minimum 10 minutes)
               </p>
             </div>
           </div>
